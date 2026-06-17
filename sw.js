@@ -1,10 +1,8 @@
-const CACHE_NAME = 'gap-metronome-v2';
+const CACHE_NAME = 'gap-metronome-v30';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
   '/css/main.css',
   '/css/components.css',
   '/css/responsive.css',
@@ -13,14 +11,29 @@ const urlsToCache = [
   '/js/core/StateManager.js',
   '/js/core/MetronomeAudio.js',
   '/js/core/MetronomeScheduler.js',
+  '/js/core/audio/SoundFactory.js',
+  '/js/core/audio/synthesizers/ClaveSynthesizer.js',
+  '/js/core/audio/synthesizers/DigitalSynthesizer.js',
+  '/js/core/audio/synthesizers/RimshotSynthesizer.js',
+  '/js/core/audio/synthesizers/AgogoSynthesizer.js',
+  '/js/core/audio/synthesizers/HiHatSynthesizer.js',
+  '/js/core/audio/synthesizers/KickSynthesizer.js',
+  '/js/core/audio/synthesizers/CowbellSynthesizer.js',
   '/js/features/TapTempo.js',
   '/js/ui/BPMDisplay.js',
   '/js/ui/BeatsVisualizer.js',
-  '/js/ui/ControlPanel.js',
-  '/js/ui/AccentControls.js',
+  '/js/ui/GapPatternWheel.js',
+  '/js/ui/TimeSignatureWheel.js',
+  '/js/ui/SubdivisionControl.js',
   '/js/ui/PlayButton.js',
+  '/js/ui/SettingsPanel.js',
+  '/js/ui/ScreenFlash.js',
   '/js/utils/DOMHelpers.js',
-  '/js/utils/PWAInstaller.js'
+  '/js/utils/PWAInstaller.js',
+  '/js/utils/NoteRenderer.js',
+  '/js/utils/ThemeManager.js',
+  '/js/utils/WakeLockManager.js',
+  '/js/utils/PresetManager.js'
 ];
 
 // Install event - cache assets

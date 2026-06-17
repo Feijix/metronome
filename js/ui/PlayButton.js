@@ -29,12 +29,13 @@ export class PlayButton {
   }
 
   updateDisplay(isPlaying) {
+    // Just toggle the 'playing' class - CSS handles icon change
     if (isPlaying) {
-      this.element.textContent = 'Stop';
       this.element.classList.add('playing');
+      this.element.setAttribute('aria-label', 'Stop metronome');
     } else {
-      this.element.textContent = 'Start';
       this.element.classList.remove('playing');
+      this.element.setAttribute('aria-label', 'Start metronome');
     }
   }
 }

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gap Metronome - Test Suite</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #fbbf24;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #a0a0a0;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    button {
+      background: #fbbf24;
+      color: #1a1a1a;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #f59e0b;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #4a4a4a;
+      color: #808080;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      flex: 1;
+      text-align: right;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+    }
+
+    .status.running {
+      color: #60a5fa;
+    }
+
+    .status.passed {
+      color: #22c55e;
+    }
+
+    .status.failed {
+      color: #ef4444;
+    }
+
+    #output {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      min-height: 400px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .summary {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      display: none;
+    }
+
+    .summary.show {
+      display: block;
+    }
+
+    .summary h2 {
+      color: #fbbf24;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .summary-card {
+      background: #1a1a1a;
+      padding: 1rem;
+      border-radius: 6px;
+      border-left: 4px solid #fbbf24;
+    }
+
+    .summary-card.passed {
+      border-left-color: #22c55e;
+    }
+
+    .summary-card.failed {
+      border-left-color: #ef4444;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .summary-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+
+    .pass-rate {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #1a1a1a;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .pass-rate-value {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .pass-rate-label {
+      font-size: 0.85rem;
+      color: #a0a0a0;
+      margin-top: 0.5rem;
+    }
+
+    .failed-tests {
+      margin-top: 1.5rem;
+      background: #1a1a1a;
+      padding: 1rem;
+      border-radius: 6px;
+      border-left: 4px solid #ef4444;
+    }
+
+    .failed-tests h3 {
+      color: #ef4444;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+
+    .failed-test-item {
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      background: #2a2a2a;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .failed-test-name {
+      color: #e0e0e0;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .failed-test-error {
+      color: #fca5a5;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+    }
+
+    /* Scrollbar styling */
+    #output::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #output::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    #output::-webkit-scrollbar-thumb {
+      background: #4a4a4a;
+      border-radius: 4px;
+    }
+
+    #output::-webkit-scrollbar-thumb:hover {
+      background: #5a5a5a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Gap Metronome Test Suite</h1>
+    <p class="subtitle">Comprehensive unit and integration tests</p>
+
+    <div class="controls">
+      <button id="run-tests">Run All Tests</button>
+      <button id="clear-output">Clear Output</button>
+      <div class="status" id="status">Ready</div>
+    </div>
+
+    <div id="output"></div>
+
+    <div class="summary" id="summary">
+      <h2>Test Results</h2>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Total Tests</div>
+          <div class="summary-value" id="total-tests">0</div>
+        </div>
+        <div class="summary-card passed">
+          <div class="summary-label">Passed</div>
+          <div class="summary-value" id="passed-tests">0</div>
+        </div>
+        <div class="summary-card failed">
+          <div class="summary-label">Failed</div>
+          <div class="summary-value" id="failed-tests">0</div>
+        </div>
+      </div>
+      <div class="pass-rate">
+        <div class="pass-rate-value" id="pass-rate">0%</div>
+        <div class="pass-rate-label">Pass Rate</div>
+      </div>
+      <div id="failed-tests-list"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { TestFramework, Assert } from './lib/test-framework.js';
+    import { registerConstantsTests } from './unit/constants.test.js';
+    import { registerStateManagerTests } from './unit/state-manager.test.js';
+    import { registerAudioSynthesisTests } from './unit/audio-synthesis.test.js';
+    import { registerMetronomeAudioTests } from './unit/metronome-audio.test.js';
+    import { registerTapTempoTests } from './unit/tap-tempo.test.js';
+    import { registerMetronomeSchedulerTests } from './unit/metronome-scheduler.test.js';
+    import { registerIntegrationTests } from './integration/integration.test.js';
+
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const summary = document.getElementById('summary');
+    const runButton = document.getElementById('run-tests');
+    const clearButton = document.getElementById('clear-output');
+
+    // Override console methods to capture output
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    function appendOutput(message, type = 'log') {
+      const span = document.createElement('span');
+      span.textContent = message + '\n';
+      if (type === 'error') {
+        span.style.color = '#fca5a5';
+      }
+      output.appendChild(span);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    console.log = function(...args) {
+      appendOutput(args.join(' '), 'log');
+      originalLog.apply(console, args);
+    };
+
+    console.error = function(...args) {
+      appendOutput(args.join(' '), 'error');
+      originalError.apply(console, args);
+    };
+
+    async function runTests() {
+      runButton.disabled = true;
+      output.innerHTML = '';
+      summary.classList.remove('show');
+      status.textContent = 'Running tests...';
+      status.className = 'status running';
+
+      const test = new TestFramework();
+
+      // Register all test suites
+      registerConstantsTests(test);
+      registerStateManagerTests(test);
+      registerAudioSynthesisTests(test);
+      registerMetronomeAudioTests(test);
+      registerTapTempoTests(test);
+      registerMetronomeSchedulerTests(test);
+      registerIntegrationTests(test);
+
+      // Run tests
+      const results = await test.run();
+
+      // Update UI
+      const total = test.passed + test.failed;
+      const passRate = total > 0 ? ((test.passed / total) * 100).toFixed(1) : 0;
+
+      document.getElementById('total-tests').textContent = total;
+      document.getElementById('passed-tests').textContent = test.passed;
+      document.getElementById('failed-tests').textContent = test.failed;
+      document.getElementById('pass-rate').textContent = passRate + '%';
+
+      if (passRate < 100) {
+        document.getElementById('pass-rate').style.color = '#ef4444';
+      } else {
+        document.getElementById('pass-rate').style.color = '#22c55e';
+      }
+
+      // Show failed tests
+      const failedResults = results.filter(r => r.status === 'failed');
+      if (failedResults.length > 0) {
+        const failedList = document.getElementById('failed-tests-list');
+        failedList.innerHTML = '<div class="failed-tests"><h3>❌ Failed Tests</h3></div>';
+        const container = failedList.querySelector('.failed-tests');
+
+        failedResults.forEach(result => {
+          const item = document.createElement('div');
+          item.className = 'failed-test-item';
+          item.innerHTML = `
+            <div class="failed-test-name">${result.name}</div>
+            <div class="failed-test-error">${result.error}</div>
+          `;
+          container.appendChild(item);
+        });
+      }
+
+      summary.classList.add('show');
+
+      status.textContent = test.failed === 0 ? 'All tests passed!' : `${test.failed} test(s) failed`;
+      status.className = test.failed === 0 ? 'status passed' : 'status failed';
+
+      runButton.disabled = false;
+    }
+
+    clearButton.addEventListener('click', () => {
+      output.innerHTML = '';
+      summary.classList.remove('show');
+      status.textContent = 'Ready';
+      status.className = 'status';
+    });
+
+    runButton.addEventListener('click', runTests);
+
+    // Auto-run tests on load
+    window.addEventListener('load', () => {
+      console.log('Test runner loaded. Click "Run All Tests" to begin.');
+    });
+  </script>
+</body>
+</html>

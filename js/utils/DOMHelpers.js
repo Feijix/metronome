@@ -1,51 +1,62 @@
 export class DOMHelpers {
   static getAllElements() {
     return {
-      // BPM controls
-      bpmDisplay: document.getElementById('bpm-display'),
-      bpmUp: document.getElementById('bpm-up'),
-      bpmDown: document.getElementById('bpm-down'),
-      tapTempo: document.getElementById('tap-tempo'),
+      // BPM rotary dial + nudge buttons
+      rotaryCanvas: document.getElementById('rotary-canvas'),
+      bpmDisplay:   document.getElementById('bpm-display'),
+      tempoName:    document.getElementById('tempo-name'),
+      bpmUp:        document.getElementById('bpm-up'),
+      bpmDown:      document.getElementById('bpm-down'),
+      tapTempo:     document.getElementById('tap-tempo'),
 
       // Visualizer
       beatsContainer: document.getElementById('beats-container'),
-      modeDisplay: document.getElementById('mode-display'),
-      barDisplay: document.getElementById('bar-display'),
-      barTotal: document.getElementById('bar-total'),
+      modeDisplay:    document.getElementById('mode-display'),
+      barDisplay:     document.getElementById('bar-display'),
+      barTotal:       document.getElementById('bar-total'),
 
-      // Controls
-      timeSig: document.getElementById('time-sig'),
-      timeUp: document.getElementById('time-up'),
-      timeDown: document.getElementById('time-down'),
+      // Gap pattern wheels
+      clickWheel: document.getElementById('click-wheel'),
+      gapWheel:   document.getElementById('gap-wheel'),
 
-      // Gap pattern
-      clickBars: document.getElementById('click-bars'),
-      clickUp: document.getElementById('click-up'),
-      clickDown: document.getElementById('click-down'),
-      gapBars: document.getElementById('gap-bars'),
-      gapUp: document.getElementById('gap-up'),
-      gapDown: document.getElementById('gap-down'),
+      // Time signature picker
+      timeSigBtn:     document.getElementById('time-sig-btn'),
+      timeSigValue:   document.getElementById('time-sig-value'),
+      timeSigPicker:  document.getElementById('time-sig-picker'),
+      timeSigOptions: document.getElementById('time-sig-options'),
 
-      // Subdivisions
-      subdivisionPills: document.querySelectorAll('.pill'),
-
-      // Accents
-      accentOne: document.getElementById('accent-one'),
-      accentQuarters: document.getElementById('accent-quarters'),
+      // Subdivision picker
+      subdivisionBtn:     document.getElementById('subdivision-btn'),
+      subdivisionValue:   document.getElementById('subdivision-value'),
+      subdivisionPicker:  document.getElementById('subdivision-picker'),
+      subdivisionOptions: document.getElementById('subdivision-options'),
 
       // Play button
       playBtn: document.getElementById('play-btn'),
 
       // PWA Install
       installPrompt: document.getElementById('install-prompt'),
-      installBtn: document.getElementById('install-btn'),
-      dismissBtn: document.getElementById('dismiss-btn')
+      installBtn:    document.getElementById('install-btn'),
+      dismissBtn:    document.getElementById('dismiss-btn'),
+
+      // Settings Panel
+      settingsIcon:          document.getElementById('settings-icon'),
+      settingsPanel:         document.getElementById('settings-panel'),
+      settingsBackdrop:      document.getElementById('settings-backdrop'),
+      settingsClose:         document.getElementById('settings-close'),
+      soundOptions:          document.querySelectorAll('.sound-option'),
+      settingsAccentOne:     document.getElementById('settings-accent-one'),
+      settingsAccentQuarters:document.getElementById('settings-accent-quarters'),
+      settingsFlash:         document.getElementById('settings-flash'),
+      settingsWakeLock:      document.getElementById('settings-wake-lock'),
+      presetName:    document.getElementById('preset-name'),
+      savePreset:    document.getElementById('save-preset'),
+      deletePreset:  document.getElementById('delete-preset'),
+      presetSelect:  document.getElementById('preset-select')
     };
   }
 
   static preventDoubleClickZoom() {
-    document.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-    }, { passive: false });
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
   }
 }

@@ -1,0 +1,24 @@
+{
+  "name": "metronome",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "sync": "npm run build && npx cap sync android",
+    "deploy": "node scripts/deploy.js",
+    "open": "npx cap open android"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1"
+  }
+}

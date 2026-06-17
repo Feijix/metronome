@@ -38,20 +38,20 @@ export class MetronomeScheduler {
   scheduleNote() {
     const stateData = this.state.getState();
     const { config, runtime } = stateData;
+    const subDef = this.state.getSubdivisionDef();
 
     const secondsPerBeat = 60.0 / config.bpm;
-    const secondsPerSubBeat = secondsPerBeat / config.subdivision;
+    const secondsPerSubBeat = secondsPerBeat / subDef.resolution;
 
-    // Determine click type
-    const clickType = this.determineClickType(config, runtime);
-
-    // Play sound if not in gap mode
-    if (!runtime.isGapMode) {
+    // Play sound if not in gap mode and this tick is active in the pattern
+    let clickType = null;
+    if (!runtime.isGapMode && subDef.pattern[runtime.currentSubBeat]) {
+      clickType = this.determineClickType(config, runtime);
       this.audio.playClick(clickType, this.nextNoteTime);
     }
 
     // Schedule visual update with proper timing
-    this.scheduleVisualUpdate(runtime);
+    this.scheduleVisualUpdate(runtime, config, clickType);
 
     // Advance time
     this.nextNoteTime += secondsPerSubBeat;
@@ -73,13 +73,22 @@ export class MetronomeScheduler {
     }
   }
 
-  scheduleVisualUpdate(runtime) {
+  scheduleVisualUpdate(runtime, config, clickType) {
     const delay = (this.nextNoteTime - this.audio.currentTime) * 1000;
+    const bar = runtime.barsInCurrentMode + 1;
+    const barTotal = runtime.isGapMode ? config.gapBars : config.clickBars;
+    const isGap = runtime.isGapMode;
     setTimeout(() => {
       this.state.notify('beatTick', {
         beat: runtime.currentBeat,
-        isGap: runtime.isGapMode
+        isGap,
+        bar,
+        barTotal
       });
+      if (navigator.vibrate) {
+        if (clickType === 'downbeat') navigator.vibrate(20);
+        else if (clickType === 'quarter') navigator.vibrate(10);
+      }
     }, delay);
   }
 

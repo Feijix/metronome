@@ -16,9 +16,10 @@ export class BeatsVisualizer {
     this.state.subscribe('playState', (isPlaying) => {
       if (!isPlaying) this.clearHighlights();
     });
-    this.state.subscribe('modeSwitch', () => this.updateModeDisplay());
-    this.state.subscribe('clickBars', () => this.updateBarTotal());
-    this.state.subscribe('gapBars', () => this.updateBarTotal());
+    // clickBars/gapBars only matter while stopped; during playback beatTick
+    // carries the correct snapshotted totals so we don't update live state here.
+    this.state.subscribe('clickBars', () => { if (!this.state.isPlaying()) this.updateModeDisplay(); });
+    this.state.subscribe('gapBars',   () => { if (!this.state.isPlaying()) this.updateModeDisplay(); });
   }
 
   rebuild() {
@@ -41,22 +42,38 @@ export class BeatsVisualizer {
   }
 
   highlightBeat(data) {
-    const { beat, isGap } = data;
+    const { beat, isGap, bar, barTotal } = data;
 
-    this.beatElements.forEach((element, index) => {
-      element.classList.remove('active', 'gap-mode');
-      if (index === beat) {
-        element.classList.add('active');
-        if (isGap) {
-          element.classList.add('gap-mode');
+    // Only update dots when the beat index changes (not on every sub-beat)
+    if (beat !== this._lastBeat || isGap !== this._lastIsGap) {
+      this._lastBeat = beat;
+      this._lastIsGap = isGap;
+      this.beatElements.forEach((element, index) => {
+        element.classList.remove('active', 'gap-mode');
+        if (index === beat) {
+          element.classList.add('active');
+          if (isGap) element.classList.add('gap-mode');
         }
-      }
-    });
+      });
+    }
 
-    this.updateModeDisplay();
+    // Only write to DOM when value actually changes to avoid repaint flicker
+    const modeText = isGap ? 'GAP' : 'CLICK';
+    if (this.modeDisplayElement.textContent !== modeText) {
+      this.modeDisplayElement.textContent = modeText;
+      this.modeDisplayElement.className = 'mode' + (isGap ? ' gap' : '');
+    }
+    if (this.barDisplayElement.textContent !== String(bar)) {
+      this.barDisplayElement.textContent = bar;
+    }
+    if (this.barTotalElement.textContent !== String(barTotal)) {
+      this.barTotalElement.textContent = barTotal;
+    }
   }
 
   clearHighlights() {
+    this._lastBeat = -1;
+    this._lastIsGap = undefined;
     this.beatElements.forEach(element => {
       element.classList.remove('active', 'gap-mode');
     });

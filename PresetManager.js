@@ -12,14 +12,31 @@ export class PresetManager {
     const presetData = localStorage.getItem(`preset:${name}`);
     if (presetData) {
       const stateData = JSON.parse(presetData);
+
+      // Load basic configuration
       this.state.setBPM(stateData.config.bpm);
       this.state.setTimeSignature(stateData.config.timeSignature);
       this.state.setSubdivision(stateData.config.subdivision);
       this.state.setClickBars(stateData.config.clickBars);
       this.state.setGapBars(stateData.config.gapBars);
-      this.state.toggleAccentOne(stateData.config.accentOne);
-      this.state.toggleAccentQuarters(stateData.config.accentQuarters);
+
+      // Load accent toggles (check current state first)
+      if (this.state.getAccentOne() !== stateData.config.accentOne) {
+        this.state.toggleAccentOne();
+      }
+      if (this.state.getAccentQuarters() !== stateData.config.accentQuarters) {
+        this.state.toggleAccentQuarters();
+      }
+
+      // Load new properties with fallbacks for backward compatibility
+      this.state.setSoundType(stateData.config.soundType || 'clave');
+      this.state.setFlashOnChange(stateData.config.flashOnChange || false);
+      this.state.setKeepAwake(stateData.config.keepAwake || false);
     }
+  }
+
+  deletePreset(name) {
+    localStorage.removeItem(`preset:${name}`);
   }
 
   getPresetNames() {

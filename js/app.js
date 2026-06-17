@@ -4,11 +4,15 @@ import { MetronomeScheduler } from './core/MetronomeScheduler.js';
 import { TapTempo } from './features/TapTempo.js';
 import { BPMDisplay } from './ui/BPMDisplay.js';
 import { BeatsVisualizer } from './ui/BeatsVisualizer.js';
-import { ControlPanel } from './ui/ControlPanel.js';
-import { AccentControls } from './ui/AccentControls.js';
+import { SubdivisionControl } from './ui/SubdivisionControl.js';
+import { GapPatternWheel } from './ui/GapPatternWheel.js';
+import { TimeSignatureWheel } from './ui/TimeSignatureWheel.js';
 import { PlayButton } from './ui/PlayButton.js';
+import { SettingsPanel } from './ui/SettingsPanel.js';
+import { ScreenFlash } from './ui/ScreenFlash.js';
 import { PWAInstaller } from './utils/PWAInstaller.js';
 import { DOMHelpers } from './utils/DOMHelpers.js';
+import { PresetManager } from './utils/PresetManager.js';
 
 class GapMetronomeApp {
   constructor() {
@@ -29,6 +33,9 @@ class GapMetronomeApp {
   initializeUI() {
     const elements = DOMHelpers.getAllElements();
 
+    // Preset manager
+    this.presetManager = new PresetManager(this.state);
+
     // UI Components
     this.bpmDisplay = new BPMDisplay(this.state, elements);
     this.visualizer = new BeatsVisualizer(
@@ -38,12 +45,18 @@ class GapMetronomeApp {
       elements.barTotal,
       elements.modeDisplay
     );
-    this.controlPanel = new ControlPanel(this.state, elements);
-    this.accentControls = new AccentControls(this.state, elements);
+    this.clickWheel = new GapPatternWheel(this.state, elements.clickWheel, 'click');
+    this.gapWheel = new GapPatternWheel(this.state, elements.gapWheel, 'gap');
+    this.timeSignatureWheel = new TimeSignatureWheel(this.state, elements);
+    this.subdivisionWheel = new SubdivisionControl(this.state, elements);
     this.playButton = new PlayButton(this.scheduler, elements.playBtn);
+    this.settingsPanel = new SettingsPanel(this.state, this.audio, this.presetManager, elements);
+    this.screenFlash = new ScreenFlash(this.state);
 
     // Tap tempo button
-    elements.tapTempo.addEventListener('click', () => this.tapTempo.handleTap());
+    if (elements.tapTempo) {
+      elements.tapTempo.addEventListener('click', () => this.tapTempo.handleTap());
+    }
 
     // Prevent double-click zoom
     DOMHelpers.preventDoubleClickZoom();
