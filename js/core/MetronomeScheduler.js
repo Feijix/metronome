@@ -86,8 +86,10 @@ export class MetronomeScheduler {
         barTotal
       });
       if (navigator.vibrate) {
-        if (clickType === 'downbeat') navigator.vibrate(20);
-        else if (clickType === 'quarter') navigator.vibrate(10);
+        const vibrateMode = this.state.getSoundType() === 'vibrate';
+        if (clickType === 'downbeat')     navigator.vibrate(vibrateMode ? 80 : 20);
+        else if (clickType === 'quarter') navigator.vibrate(vibrateMode ? 50 : 10);
+        else if (vibrateMode)             navigator.vibrate(22);
       }
     }, delay);
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gap-metronome-v30';
+const CACHE_NAME = 'gap-metronome-v37';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -12,13 +12,10 @@ const urlsToCache = [
   '/js/core/MetronomeAudio.js',
   '/js/core/MetronomeScheduler.js',
   '/js/core/audio/SoundFactory.js',
-  '/js/core/audio/synthesizers/ClaveSynthesizer.js',
   '/js/core/audio/synthesizers/DigitalSynthesizer.js',
-  '/js/core/audio/synthesizers/RimshotSynthesizer.js',
-  '/js/core/audio/synthesizers/AgogoSynthesizer.js',
-  '/js/core/audio/synthesizers/HiHatSynthesizer.js',
-  '/js/core/audio/synthesizers/KickSynthesizer.js',
-  '/js/core/audio/synthesizers/CowbellSynthesizer.js',
+  '/js/core/audio/synthesizers/MechanicalSynthesizer.js',
+  '/js/core/audio/synthesizers/DrumstickSynthesizer.js',
+  '/js/core/audio/synthesizers/VibrateSynthesizer.js',
   '/js/features/TapTempo.js',
   '/js/ui/BPMDisplay.js',
   '/js/ui/BeatsVisualizer.js',

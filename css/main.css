@@ -41,51 +41,53 @@ button:focus-visible {
   --success: #22c55e;
 }
 
-html, body {
+html {
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg-primary);
+}
+
+body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-}
-
-/* Body - Gradient Background */
-body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-  background-attachment: fixed;
+  background: transparent; /* gradient is on html */
   color: var(--text-primary);
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0;
   touch-action: manipulation;
-}
-
-/* Disable text selection across the entire app */
-body {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* App Container - Mobile First */
+/* App Container */
 .app {
   width: 100%;
   max-width: 420px;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2rem;
+  justify-content: space-evenly;
+  gap: 0;
   position: relative;
-  padding: 1rem 0;
+  padding: clamp(0.5rem, 2svh, 1.25rem) 1rem;
+  padding-top:    max(clamp(0.5rem, 2svh, 1.25rem), env(safe-area-inset-top));
+  padding-bottom: max(clamp(0.5rem, 2svh, 1.25rem), env(safe-area-inset-bottom));
 }
 
 /* Tablet/Desktop adjustments */
 @media (min-width: 768px) {
   .app {
-    min-height: auto;
-    padding: 2rem 0;
+    height: auto;
+    min-height: 100dvh;
+    justify-content: center;
+    gap: 1.5rem;
   }
 }
 

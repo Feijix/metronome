@@ -1,24 +1,21 @@
 import { BPM_CONSTANTS, TEMPO_MARKINGS } from '../config/constants.js';
 
-// Arc spans 300° (5π/3 rad), gap at the bottom.
-// Canvas angles: 0 = right, clockwise. 7 o'clock = 120°, 5 o'clock = 60° + full revolution.
-const START_ANGLE = (2 * Math.PI) / 3;          // 120° — 7 o'clock
-const END_ANGLE   = START_ANGLE + (5 * Math.PI) / 3; // + 300° — 5 o'clock
-const ARC_SPAN    = (5 * Math.PI) / 3;           // 300° — visual only
-const DRAG_SENSITIVITY = 28 * Math.PI;           // 14 full rotations = full BPM range
-const DIAL_SIZE   = 220;
+const START_ANGLE       = (2 * Math.PI) / 3;
+const ARC_SPAN          = (5 * Math.PI) / 3;
+const DRAG_SENSITIVITY  = 28 * Math.PI;   // 14 full rotations = full BPM range
 
 export class BPMDisplay {
   constructor(stateManager, elements) {
-    this.state = stateManager;
+    this.state    = stateManager;
     this.elements = elements;
-    this.canvas = elements.rotaryCanvas;
-    this.ctx = this.canvas.getContext('2d');
+    this.canvas   = elements.rotaryCanvas;
+    this.ctx      = this.canvas.getContext('2d');
     this.dragging = false;
-    this.lastAngle = 0;
-    this.bpmAccum = 0;
-    this.dotAngle = this.bpmToAngle(stateManager.getBPM());
-    this.repeatTimeout = null;
+    this.lastAngle    = 0;
+    this.bpmAccum     = 0;
+    this.dialSize     = this.computeDialSize();
+    this.dotAngle     = this.bpmToAngle(stateManager.getBPM());
+    this.repeatTimeout  = null;
     this.repeatInterval = null;
 
     this.initCanvas();
@@ -28,66 +25,78 @@ export class BPMDisplay {
     this.updateDisplay(this.state.getBPM());
   }
 
+  computeDialSize() {
+    // Scale with screen width; cap at 220px for larger phones
+    return Math.min(220, Math.floor(window.innerWidth * 0.57));
+  }
+
   initCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width  = DIAL_SIZE * dpr;
-    this.canvas.height = DIAL_SIZE * dpr;
-    this.canvas.style.width  = DIAL_SIZE + 'px';
-    this.canvas.style.height = DIAL_SIZE + 'px';
-    this.ctx.scale(dpr, dpr);
+    this.applyCanvasSize();
     window.addEventListener('resize', () => {
-      const d = window.devicePixelRatio || 1;
-      this.canvas.width  = DIAL_SIZE * d;
-      this.canvas.height = DIAL_SIZE * d;
-      this.ctx.scale(d, d);
+      this.dialSize = this.computeDialSize();
+      this.applyCanvasSize();
       this.draw(this.state.getBPM());
     });
   }
 
+  applyCanvasSize() {
+    const s   = this.dialSize;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width        = s * dpr;
+    this.canvas.height       = s * dpr;
+    this.canvas.style.width  = s + 'px';
+    this.canvas.style.height = s + 'px';
+    // Keep container in sync so the centred text overlay stays aligned
+    const container = this.canvas.parentElement;
+    if (container) {
+      container.style.width  = s + 'px';
+      container.style.height = s + 'px';
+    }
+    this.ctx.scale(dpr, dpr);
+  }
+
   bindEvents() {
     const { bpmUp, bpmDown } = this.elements;
-    if (bpmUp) {
-      bpmUp.addEventListener('pointerdown', () => { this.nudge(1); this.scheduleRepeat(1); });
-    }
-    if (bpmDown) {
-      bpmDown.addEventListener('pointerdown', () => { this.nudge(-1); this.scheduleRepeat(-1); });
-    }
+    if (bpmUp)   bpmUp.addEventListener('pointerdown',   () => { this.nudge(1);  this.scheduleRepeat(1);  });
+    if (bpmDown) bpmDown.addEventListener('pointerdown', () => { this.nudge(-1); this.scheduleRepeat(-1); });
     document.addEventListener('pointerup',     () => this.stopRepeat());
     document.addEventListener('pointercancel', () => this.stopRepeat());
 
     this.canvas.addEventListener('touchstart', e => {
-      this.dragging = true;
+      this.dragging  = true;
       this.lastAngle = this.pointerAngle(e.touches[0]);
-      this.bpmAccum = 0;
+      this.bpmAccum  = 0;
     }, { passive: true });
 
     this.canvas.addEventListener('touchmove', e => {
       e.preventDefault();
       if (!this.dragging) return;
-      const angle = this.pointerAngle(e.touches[0]);
-      this.applyDelta(angle);
+      this.applyDelta(this.pointerAngle(e.touches[0]));
     }, { passive: false });
 
     this.canvas.addEventListener('touchend', () => { this.dragging = false; });
 
     this.canvas.addEventListener('mousedown', e => {
-      this.dragging = true;
+      this.dragging  = true;
       this.lastAngle = this.pointerAngle(e);
-      this.bpmAccum = 0;
+      this.bpmAccum  = 0;
     });
     document.addEventListener('mousemove', e => {
       if (!this.dragging) return;
-      const angle = this.pointerAngle(e);
-      this.applyDelta(angle);
+      this.applyDelta(this.pointerAngle(e));
     });
     document.addEventListener('mouseup', () => { this.dragging = false; });
   }
 
   nudge(dir) {
-    const prev = this.state.getBPM();
-    this.state.setBPM(prev + dir);
-    const actual = this.state.getBPM() - prev;
+    const prev   = this.state.getBPM();
+    const next   = Math.max(BPM_CONSTANTS.MIN, Math.min(BPM_CONSTANTS.MAX, prev + dir));
+    const actual = next - prev;
+    if (actual === 0) return;
+    // Update dotAngle BEFORE setBPM so the subscriber-triggered draw already
+    // sees the new position, giving the correct visual direction.
     this.dotAngle += actual * DRAG_SENSITIVITY / (BPM_CONSTANTS.MAX - BPM_CONSTANTS.MIN);
+    this.state.setBPM(next);
     if (navigator.vibrate) navigator.vibrate(6);
   }
 
@@ -100,7 +109,7 @@ export class BPMDisplay {
   stopRepeat() {
     clearTimeout(this.repeatTimeout);
     clearInterval(this.repeatInterval);
-    this.repeatTimeout = null;
+    this.repeatTimeout  = null;
     this.repeatInterval = null;
   }
 
@@ -118,41 +127,43 @@ export class BPMDisplay {
     if (delta < -Math.PI) delta += 2 * Math.PI;
     this.lastAngle = angle;
 
-    this.dotAngle += delta;
-    this.bpmAccum += delta * (BPM_CONSTANTS.MAX - BPM_CONSTANTS.MIN) / DRAG_SENSITIVITY;
+    this.dotAngle  += delta;
+    this.bpmAccum  += delta * (BPM_CONSTANTS.MAX - BPM_CONSTANTS.MIN) / DRAG_SENSITIVITY;
     const step = Math.trunc(this.bpmAccum);
     if (step !== 0) {
       this.bpmAccum -= step;
       this.state.setBPM(this.state.getBPM() + step);
       if (navigator.vibrate) navigator.vibrate(6);
     }
+    // Redraw on every pointer move for fluid dot motion (not only on BPM integer steps)
+    this.draw(this.state.getBPM());
   }
 
   draw(bpm) {
-    const ctx = this.ctx;
-    const cx    = DIAL_SIZE / 2;
-    const cy    = DIAL_SIZE / 2;
-    const ringR = 98;
+    const s     = this.dialSize;
+    const ctx   = this.ctx;
+    const cx    = s / 2;
+    const cy    = s / 2;
+    const ringR = s * 0.445;
+    const dotR  = s * 0.048;
 
-    ctx.clearRect(0, 0, DIAL_SIZE, DIAL_SIZE);
+    ctx.clearRect(0, 0, s, s);
 
-    const style = getComputedStyle(document.documentElement);
+    const style       = getComputedStyle(document.documentElement);
     const borderColor = style.getPropertyValue('--border').trim() || '#334155';
     const accentColor = style.getPropertyValue('--accent').trim() || '#06b6d4';
 
-    // Full circle — thin contour matching button borders
     ctx.beginPath();
     ctx.arc(cx, cy, ringR, 0, 2 * Math.PI);
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1;
+    ctx.lineWidth   = 1;
     ctx.stroke();
 
-    // Moving dot — free rotation, tracks finger 1:1
     ctx.beginPath();
     ctx.arc(
       cx + ringR * Math.cos(this.dotAngle),
       cy + ringR * Math.sin(this.dotAngle),
-      10.5, 0, 2 * Math.PI
+      dotR, 0, 2 * Math.PI
     );
     ctx.fillStyle = accentColor;
     ctx.fill();

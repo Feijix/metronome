@@ -72,15 +72,11 @@ export const GAP_PATTERN_LIMITS = {
   GAP_DEFAULT: 2
 };
 
-// Available sound types for audio synthesis
 export const SOUND_TYPES = [
-  'clave',     // Wood block (current default)
-  'digital',   // Sharp sine beep
-  'rimshot',   // Noise burst + tone
-  'agogo',     // Two-tone metallic
-  'hihat',     // Filtered noise
-  'kick',      // Low sine + click
-  'cowbell'    // Metallic FM synthesis
+  'digital',
+  'mechanical',
+  'drumstick',
+  'vibrate',
 ];
 
 // Tap tempo constants
@@ -111,7 +107,7 @@ export const DEFAULT_STATE = {
   gapBars: GAP_PATTERN_LIMITS.GAP_DEFAULT,
   accentOne: true,
   accentQuarters: true,
-  soundType: 'clave',
+  soundType: 'mechanical',
   flashOnChange: false,
   keepAwake: false
 };

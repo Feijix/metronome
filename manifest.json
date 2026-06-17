@@ -1,11 +1,11 @@
 {
-  "name": "Gap Metronome",
-  "short_name": "GapMetro",
+  "name": "Metronome",
+  "short_name": "Metronome",
   "description": "Practice metronome with gap training for developing internal timing",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#10b981",
-  "theme_color": "#10b981",
+  "background_color": "#0f172a",
+  "theme_color": "#06b6d4",
   "orientation": "portrait",
   "icons": [
     {

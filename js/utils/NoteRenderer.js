@@ -4,272 +4,305 @@ export class NoteRenderer {
     this.ctx = this.canvas.getContext('2d');
     this.color = '#ffffff';
 
-    this.noteHeadWidth = 9;
-    this.noteHeadHeight = 7.5;   // rounder (was 6.5)
-    this.noteHeadRotation = -0.2; // less tilt (was -0.35)
-    this.stemWidth = 1.6;         // slightly thicker (was 1.2)
-    this.stemLength = 24;
-    this.beamThickness = 4;       // thicker (was 3.5)
-    this.beamSpacing = 5;         // clear gap between beams (was 3.5)
+    // Geometry at CSS 1× pixels — all canvases share H so CSS height:Xpx
+    // scales every symbol identically.
+    this.H    = 42;   // CSS canvas height (all symbols)
+    this.baseY = 32;  // note-head Y for regular symbols
+    this.tBaseY = 33; // note-head Y for triplets (shorter stem, bracket fits in H)
+    this.tStem  = 18; // triplet stem length  (beamY = 33-18 = 15)
+
+    this.hw = 7;     // note-head width
+    this.hh = 5;     // note-head height
+    this.ha = -0.25; // note-head tilt
+    this.sw = 1.0;   // stem stroke width  (1 CSS px → exactly N device px)
+    this.sl = 24;    // stem length (regular)
+    this.bh = 1.5;   // beam thickness
+    this.bg = 5.0;   // beam center-to-center spacing
   }
+
+  get dpr() { return Math.min(3, Math.ceil(window.devicePixelRatio || 1)); }
+
+  // Snap a CSS-pixel coordinate to the nearest device-pixel boundary so that
+  // strokes land on whole device pixels and look crisp.
+  snap(v) { const d = this.dpr; return Math.round(v * d) / d; }
+
+  setup(cssW) {
+    const s = this.dpr;
+    this.canvas.width  = Math.round(cssW * s);
+    this.canvas.height = Math.round(this.H  * s);
+    this.ctx.setTransform(s, 0, 0, s, 0, 0);
+    this.ctx.clearRect(0, 0, cssW, this.H);
+  }
+
+  // ── Primitives ─────────────────────────────────────────────────────────
+
+  head(x, y) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(this.snap(x), this.snap(y));
+    ctx.rotate(this.ha);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, this.hw / 2, this.hh / 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  dot(x, y) {
+    this.ctx.beginPath();
+    this.ctx.arc(this.snap(x + this.hw / 2 + 3), this.snap(y - 1.5), 1.5, 0, Math.PI * 2);
+    this.ctx.fillStyle = this.color;
+    this.ctx.fill();
+  }
+
+  stem(x, y, len = this.sl) {
+    const ctx = this.ctx;
+    const sx = this.snap(x + this.hw / 2 - 0.5);
+    const sy = this.snap(y), ey = this.snap(y - len);
+    ctx.beginPath();
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = this.sw;
+    ctx.lineCap = 'round';
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx, ey);
+    ctx.stroke();
+  }
+
+  sx(x) { return this.snap(x + this.hw / 2 - 0.5); }
+
+  beams(x1, x2, y, count, bh = this.bh, bg = this.bg) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = bh;
+    ctx.lineCap = 'butt'; // flat ends — cleaner at beam tips
+    for (let i = 0; i < count; i++) {
+      const cy = this.snap(y + bh / 2 + i * bg);
+      ctx.beginPath();
+      ctx.moveTo(this.snap(x1), cy);
+      ctx.lineTo(this.snap(x2), cy);
+      ctx.stroke();
+    }
+  }
+
+  bracket(x1, x2, topY) {
+    const ctx = this.ctx;
+    const ty = this.snap(topY), tick = 4;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.snap(x1), ty + tick);
+    ctx.lineTo(this.snap(x1), ty);
+    ctx.lineTo(this.snap(x2), ty);
+    ctx.lineTo(this.snap(x2), ty + tick);
+    ctx.stroke();
+    ctx.fillStyle = this.color;
+    ctx.font = 'bold 7px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('3', (x1 + x2) / 2, ty - 1);
+  }
+
+  // ── Rest glyphs ─────────────────────────────────────────────────────────
+
+  // Draw one "flag" unit: filled dot at (rx, top), bezier diagonal to (lx, bot).
+  _restFlag(ctx, rx, lx, top, bot) {
+    const dotR = 2;
+    ctx.beginPath();
+    ctx.arc(this.snap(rx), this.snap(top), dotR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(this.snap(rx), this.snap(top + dotR + 1));
+    ctx.quadraticCurveTo(
+      this.snap(rx - 1), this.snap((top + bot) / 2),
+      this.snap(lx), this.snap(bot)
+    );
+    ctx.stroke();
+  }
+
+  // 8th rest: dot + curved diagonal + serif. baseY must be the actual
+  // note-head baseline for the calling context (regular or triplet).
+  draw8thRest(x, beamY, baseY = this.baseY) {
+    const ctx = this.ctx;
+    const avail = baseY - beamY;
+    const gTop  = beamY + Math.max(4, avail * 0.18);
+    const gBot  = baseY - Math.max(3, avail * 0.12);
+    const rx    = x + 3;
+    const lx    = x - 2;
+
+    ctx.save();
+    ctx.fillStyle = ctx.strokeStyle = this.color;
+    ctx.lineCap   = 'round';
+    ctx.lineWidth = 1.4;
+
+    this._restFlag(ctx, rx, lx, gTop, gBot);
+
+    // serif at bottom-left
+    ctx.beginPath();
+    ctx.moveTo(this.snap(lx - 3), this.snap(gBot));
+    ctx.lineTo(this.snap(lx + 3), this.snap(gBot));
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 16th rest: two stacked flags + serif.
+  draw16thRest(x, beamY, baseY = this.baseY) {
+    const ctx   = this.ctx;
+    const avail = baseY - beamY;
+    const gTop  = beamY + Math.max(3, avail * 0.12);
+    const gBot  = baseY - Math.max(2, avail * 0.08);
+    const gMid  = (gTop + gBot) / 2;
+    const rx    = x + 3;
+    const lx    = x - 2;
+
+    ctx.save();
+    ctx.fillStyle = ctx.strokeStyle = this.color;
+    ctx.lineCap   = 'round';
+    ctx.lineWidth = 1.4;
+
+    this._restFlag(ctx, rx, lx, gTop, gMid - 1);
+    this._restFlag(ctx, rx, lx, gMid + 2, gBot);
+
+    // serif at bottom-left
+    ctx.beginPath();
+    ctx.moveTo(this.snap(lx - 3), this.snap(gBot));
+    ctx.lineTo(this.snap(lx + 3), this.snap(gBot));
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────
 
   render(sub) {
     switch (sub.id) {
-      case 'q':    return this.renderQuarterNote();
-      case '8':    return this.renderEighthNotes();
-      case '8t':   return this.renderEighthTriplet();
-      case '16':   return this.renderSixteenthNotes();
-      case '16t':  return this.renderSixteenthTriplet();
-      case '32':   return this.renderThirtySecondNotes();
-      case 'd8':   return this.renderDottedEighthSixteenth();
-      case '16r1': return this.renderPartial16(0);
-      case '16r2': return this.renderPartial16(1);
-      case '16r3': return this.renderPartial16(2);
-      case '16r4': return this.renderPartial16(3);
-      case '8tr1':  return this.renderPartialTriplet8([0]);
-      case '8tr2':  return this.renderPartialTriplet8([1]);
-      case '8tr3':  return this.renderPartialTriplet8([2]);
-      case '8tr13': return this.renderPartialTriplet8([0, 2]);
-      case '8tr12': return this.renderPartialTriplet8([0, 1]);
-      default:     return this.renderQuarterNote();
+      case 'q':    return this._quarter();
+      case '8':    return this._eighth();
+      case '8t':   return this._eighthTriplet();
+      case '16':   return this._sixteenth();
+      case '16t':  return this._sixteenthTriplet();
+      case '32':   return this._thirtySecond();
+      case 'd8':   return this._dottedEighth();
+      case '16r1': return this._partial16(0);
+      case '16r2': return this._partial16(1);
+      case '16r3': return this._partial16(2);
+      case '16r4': return this._partial16(3);
+      case '8tr1':  return this._partialTriplet([0]);
+      case '8tr2':  return this._partialTriplet([1]);
+      case '8tr3':  return this._partialTriplet([2]);
+      case '8tr13': return this._partialTriplet([0, 2]);
+      case '8tr12': return this._partialTriplet([0, 1]);
+      default:     return this._quarter();
     }
   }
 
-  clear() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
+  // ── Symbol renderers ────────────────────────────────────────────────────
 
-  drawNoteHead(x, y) {
-    this.ctx.save();
-    this.ctx.translate(x, y);
-    this.ctx.rotate(this.noteHeadRotation);
-    this.ctx.beginPath();
-    this.ctx.ellipse(0, 0, this.noteHeadWidth / 2, this.noteHeadHeight / 2, 0, 0, Math.PI * 2);
-    this.ctx.fillStyle = this.color;
-    this.ctx.fill();
-    this.ctx.restore();
-  }
-
-  drawXNoteHead(x, y) {
-    const s = 3.5;
-    this.ctx.save();
-    this.ctx.strokeStyle = this.color;
-    this.ctx.lineWidth = 1.8;
-    this.ctx.lineCap = 'round';
-    this.ctx.beginPath();
-    this.ctx.moveTo(x - s, y - s);
-    this.ctx.lineTo(x + s, y + s);
-    this.ctx.moveTo(x + s, y - s);
-    this.ctx.lineTo(x - s, y + s);
-    this.ctx.stroke();
-    this.ctx.restore();
-  }
-
-  drawAugmentationDot(x, y) {
-    this.ctx.beginPath();
-    this.ctx.arc(x + this.noteHeadWidth / 2 + 3.5, y - 1.5, 2, 0, Math.PI * 2);
-    this.ctx.fillStyle = this.color;
-    this.ctx.fill();
-  }
-
-  drawStem(x, y) {
-    const stemX = x + (this.noteHeadWidth / 2 - 0.5);
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = this.color;
-    this.ctx.lineWidth = this.stemWidth;
-    this.ctx.lineCap = 'round';  // rounded cap at top (was 'butt')
-    this.ctx.moveTo(stemX, y);
-    this.ctx.lineTo(stemX, y - this.stemLength);
-    this.ctx.stroke();
-  }
-
-  // Beams drawn as strokes with round caps for a clean, Outfit-like look
-  drawBeams(x1, x2, y, beamCount = 1) {
-    this.ctx.strokeStyle = this.color;
-    this.ctx.lineWidth = this.beamThickness;
-    this.ctx.lineCap = 'round';
-    for (let i = 0; i < beamCount; i++) {
-      const cy = y + this.beamThickness / 2 + i * this.beamSpacing;
-      this.ctx.beginPath();
-      this.ctx.moveTo(x1, cy);
-      this.ctx.lineTo(x2, cy);
-      this.ctx.stroke();
-    }
-  }
-
-  drawTripletBracket(x1, x2, y) {
-    this.ctx.strokeStyle = this.color;
-    this.ctx.lineWidth = 1;
-    this.ctx.lineCap = 'round';
-    const bracketHeight = 4;
-    this.ctx.beginPath();
-    this.ctx.moveTo(x1, y + bracketHeight);
-    this.ctx.lineTo(x1, y);
-    this.ctx.lineTo(x2, y);
-    this.ctx.lineTo(x2, y + bracketHeight);
-    this.ctx.stroke();
-    this.ctx.fillStyle = this.color;
-    this.ctx.font = 'bold 9px Outfit, sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'bottom';
-    this.ctx.fillText('3', (x1 + x2) / 2, y - 1);
-  }
-
-  // ── Standard subdivisions ───────────────────────────────────────────
-
-  renderQuarterNote() {
-    this.canvas.width = 24;
-    this.canvas.height = 42;
-    this.clear();
-    const x = 12, y = 32;
-    this.drawNoteHead(x, y);
-    this.drawStem(x, y);
+  _quarter() {
+    this.setup(22);
+    this.head(11, this.baseY);
+    this.stem(11, this.baseY);
     return this.canvas.toDataURL();
   }
 
-  renderEighthNotes() {
-    this.canvas.width = 42;
-    this.canvas.height = 42;
-    this.clear();
-    const baseY = 32, spacing = 18, startX = 12;
-    for (let i = 0; i < 2; i++) this.drawNoteHead(startX + i * spacing, baseY);
-    for (let i = 0; i < 2; i++) this.drawStem(startX + i * spacing, baseY);
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + spacing + (this.noteHeadWidth / 2 - 0.5);
-    this.drawBeams(stemX1, stemX2, baseY - this.stemLength, 1);
+  _eighth() {
+    const sp = 16, x0 = 10;
+    this.setup(x0 + sp + this.hw + 4);
+    const y = this.baseY, beamY = y - this.sl;
+    this.head(x0, y);      this.stem(x0, y);
+    this.head(x0 + sp, y); this.stem(x0 + sp, y);
+    this.beams(this.sx(x0), this.sx(x0 + sp), beamY, 1);
     return this.canvas.toDataURL();
   }
 
-  renderEighthTriplet() {
-    this.canvas.width = 58;
-    this.canvas.height = 52;
-    this.clear();
-    const baseY = 38, spacing = 16, startX = 13;
-    for (let i = 0; i < 3; i++) this.drawNoteHead(startX + i * spacing, baseY);
-    for (let i = 0; i < 3; i++) this.drawStem(startX + i * spacing, baseY);
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 2 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    const beamY = baseY - this.stemLength;
-    this.drawBeams(stemX1, stemX2, beamY, 1);
-    this.drawTripletBracket(stemX1 - 2, stemX2 + 2, beamY - 7);
+  _sixteenth() {
+    const sp = 12, x0 = 10, n = 4;
+    this.setup(x0 + (n - 1) * sp + this.hw + 4);
+    const y = this.baseY, beamY = y - this.sl;
+    for (let i = 0; i < n; i++) { this.head(x0 + i * sp, y); this.stem(x0 + i * sp, y); }
+    this.beams(this.sx(x0), this.sx(x0 + (n - 1) * sp), beamY, 2);
     return this.canvas.toDataURL();
   }
 
-  renderSixteenthNotes() {
-    this.canvas.width = 62;
-    this.canvas.height = 42;
-    this.clear();
-    const baseY = 32, spacing = 14, startX = 12;
-    for (let i = 0; i < 4; i++) this.drawNoteHead(startX + i * spacing, baseY);
-    for (let i = 0; i < 4; i++) this.drawStem(startX + i * spacing, baseY);
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 3 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    this.drawBeams(stemX1, stemX2, baseY - this.stemLength, 2);
+  _thirtySecond() {
+    const sp = 9, x0 = 10, n = 8, sl = 20;
+    this.setup(x0 + (n - 1) * sp + this.hw + 4);
+    const y = this.baseY, beamY = y - sl;
+    for (let i = 0; i < n; i++) { this.head(x0 + i * sp, y); this.stem(x0 + i * sp, y, sl); }
+    this.beams(this.sx(x0), this.sx(x0 + (n - 1) * sp), beamY, 3, this.bh, 4.5);
     return this.canvas.toDataURL();
   }
 
-  renderSixteenthTriplet() {
-    this.canvas.width = 82;
-    this.canvas.height = 52;
-    this.clear();
-    const baseY = 38, spacing = 12, startX = 12;
-    for (let i = 0; i < 6; i++) this.drawNoteHead(startX + i * spacing, baseY);
-    for (let i = 0; i < 6; i++) this.drawStem(startX + i * spacing, baseY);
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 5 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    const beamY = baseY - this.stemLength;
-    this.drawBeams(stemX1, stemX2, beamY, 2);
-    this.drawTripletBracket(stemX1 - 2, stemX2 + 2, beamY - 7);
+  _dottedEighth() {
+    const x0 = 10, x1 = x0 + 22;
+    this.setup(x1 + this.hw + 10);
+    const y = this.baseY, beamY = y - this.sl;
+    this.head(x0, y);  this.stem(x0, y);
+    this.head(x1, y);  this.stem(x1, y);
+    this.beams(this.sx(x0), this.sx(x1), beamY, 1);
+    this.beams(this.sx(x1) - 7, this.sx(x1), beamY + this.bg, 1);
+    this.dot(x0, y);
     return this.canvas.toDataURL();
   }
 
-  renderThirtySecondNotes() {
-    this.canvas.width = 90;
-    this.canvas.height = 46;
-    this.clear();
-    const baseY = 36, spacing = 10, startX = 12;
-    for (let i = 0; i < 8; i++) this.drawNoteHead(startX + i * spacing, baseY);
-    for (let i = 0; i < 8; i++) this.drawStem(startX + i * spacing, baseY);
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 7 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    this.drawBeams(stemX1, stemX2, baseY - this.stemLength, 3);
+  _tripletSetup(cssW) {
+    this.setup(cssW);
+    return { baseY: this.tBaseY, stemLen: this.tStem, beamY: this.tBaseY - this.tStem };
+  }
+
+  _eighthTriplet() {
+    const sp = 15, x0 = 12, n = 3;
+    const { baseY, stemLen, beamY } = this._tripletSetup(x0 + (n - 1) * sp + this.hw + 6);
+    for (let i = 0; i < n; i++) { this.head(x0 + i * sp, baseY); this.stem(x0 + i * sp, baseY, stemLen); }
+    const sx1 = this.sx(x0), sx2 = this.sx(x0 + (n - 1) * sp);
+    this.beams(sx1, sx2, beamY, 1);
+    this.bracket(sx1 - 2, sx2 + 2, beamY - 6);
     return this.canvas.toDataURL();
   }
 
-  renderDottedEighthSixteenth() {
-    this.canvas.width = 52;
-    this.canvas.height = 42;
-    this.clear();
-
-    const baseY = 32;
-    const startX = 10;
-    const note2X = startX + 24;
-
-    this.drawNoteHead(startX, baseY);
-    this.drawNoteHead(note2X, baseY);
-    this.drawStem(startX, baseY);
-    this.drawStem(note2X, baseY);
-
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = note2X + (this.noteHeadWidth / 2 - 0.5);
-    const beamY = baseY - this.stemLength;
-
-    this.drawBeams(stemX1, stemX2, beamY, 1);
-    // Partial secondary beam (right side only — makes 2nd note a 16th)
-    this.drawBeams(stemX2 - 8, stemX2, beamY + this.beamSpacing, 1);
-
-    this.drawAugmentationDot(startX, baseY);
-
+  _sixteenthTriplet() {
+    const sp = 11, x0 = 11, n = 6;
+    const { baseY, stemLen, beamY } = this._tripletSetup(x0 + (n - 1) * sp + this.hw + 6);
+    for (let i = 0; i < n; i++) { this.head(x0 + i * sp, baseY); this.stem(x0 + i * sp, baseY, stemLen); }
+    const sx1 = this.sx(x0), sx2 = this.sx(x0 + (n - 1) * sp);
+    this.beams(sx1, sx2, beamY, 2);
+    this.bracket(sx1 - 2, sx2 + 2, beamY - 6);
     return this.canvas.toDataURL();
   }
 
-  renderPartialTriplet8(silentPositions) {
-    this.canvas.width = 58;
-    this.canvas.height = 52;
-    this.clear();
-
-    const baseY = 38, spacing = 16, startX = 13;
-
-    for (let i = 0; i < 3; i++) {
-      const x = startX + i * spacing;
-      if (silentPositions.includes(i)) {
-        this.drawXNoteHead(x, baseY);
-      } else {
-        this.drawNoteHead(x, baseY);
-      }
-      this.drawStem(x, baseY);
-    }
-
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 2 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    const beamY = baseY - this.stemLength;
-    this.drawBeams(stemX1, stemX2, beamY, 1);
-    this.drawTripletBracket(stemX1 - 2, stemX2 + 2, beamY - 7);
-
-    return this.canvas.toDataURL();
-  }
-
-  renderPartial16(silentPos) {
-    this.canvas.width = 62;
-    this.canvas.height = 42;
-    this.clear();
-
-    const baseY = 32, spacing = 14, startX = 12;
-
-    for (let i = 0; i < 4; i++) {
-      const x = startX + i * spacing;
+  _partial16(silentPos) {
+    const sp = 12, x0 = 10, n = 4;
+    this.setup(x0 + (n - 1) * sp + this.hw + 4);
+    const y = this.baseY, beamY = y - this.sl;
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * sp;
       if (i === silentPos) {
-        this.drawXNoteHead(x, baseY);
+        this.draw16thRest(x, beamY, y);
       } else {
-        this.drawNoteHead(x, baseY);
+        this.head(x, y);
+        this.stem(x, y);
       }
-      this.drawStem(x, baseY);
     }
+    this.beams(this.sx(x0), this.sx(x0 + (n - 1) * sp), beamY, 2);
+    return this.canvas.toDataURL();
+  }
 
-    const stemX1 = startX + (this.noteHeadWidth / 2 - 0.5);
-    const stemX2 = startX + 3 * spacing + (this.noteHeadWidth / 2 - 0.5);
-    this.drawBeams(stemX1, stemX2, baseY - this.stemLength, 2);
-
+  _partialTriplet(silentPositions) {
+    const sp = 15, x0 = 12, n = 3;
+    const { baseY, stemLen, beamY } = this._tripletSetup(x0 + (n - 1) * sp + this.hw + 6);
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * sp;
+      if (silentPositions.includes(i)) {
+        this.draw8thRest(x, beamY, baseY);
+      } else {
+        this.head(x, baseY);
+        this.stem(x, baseY, stemLen);
+      }
+    }
+    const sx1 = this.sx(x0), sx2 = this.sx(x0 + (n - 1) * sp);
+    this.beams(sx1, sx2, beamY, 1);
+    this.bracket(sx1 - 2, sx2 + 2, beamY - 6);
     return this.canvas.toDataURL();
   }
 }

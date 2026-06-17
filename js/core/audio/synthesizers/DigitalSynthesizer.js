@@ -1,77 +1,33 @@
-/**
- * Digital Synthesizer
- * Produces sharp, clean sine beeps at different frequencies
- * Very short attack, crisp and precise
- */
 export class DigitalSynthesizer {
   constructor(audioContext) {
     this.context = audioContext;
   }
 
-  /**
-   * Play accent sound (beat 1)
-   * Highest frequency, short and sharp
-   */
+  _beep(time, freq, gain, dur) {
+    const ctx = this.context;
+    const osc  = ctx.createOscillator();
+    const env  = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, time);
+    env.gain.setValueAtTime(gain, time);
+    env.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    osc.connect(env).connect(ctx.destination);
+    osc.start(time);
+    osc.stop(time + dur);
+  }
+
   playAccent(startTime) {
-    const time = startTime || this.context.currentTime;
-
-    const osc = this.context.createOscillator();
-    const gain = this.context.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1400, time);
-
-    // Very sharp attack and decay
-    gain.gain.setValueAtTime(0.7, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
-
-    osc.connect(gain).connect(this.context.destination);
-
-    osc.start(time);
-    osc.stop(time + 0.06);
+    const t = startTime || this.context.currentTime;
+    this._beep(t, 1800, 0.70, 0.065);
   }
 
-  /**
-   * Play quarter beat sound
-   * Medium frequency
-   */
   playQuarter(startTime) {
-    const time = startTime || this.context.currentTime;
-
-    const osc = this.context.createOscillator();
-    const gain = this.context.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1100, time);
-
-    gain.gain.setValueAtTime(0.55, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-
-    osc.connect(gain).connect(this.context.destination);
-
-    osc.start(time);
-    osc.stop(time + 0.05);
+    const t = startTime || this.context.currentTime;
+    this._beep(t, 1400, 0.55, 0.055);
   }
 
-  /**
-   * Play subdivision sound
-   * Lower frequency, quieter
-   */
   playSubdivision(startTime) {
-    const time = startTime || this.context.currentTime;
-
-    const osc = this.context.createOscillator();
-    const gain = this.context.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(900, time);
-
-    gain.gain.setValueAtTime(0.3, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
-
-    osc.connect(gain).connect(this.context.destination);
-
-    osc.start(time);
-    osc.stop(time + 0.03);
+    const t = startTime || this.context.currentTime;
+    this._beep(t, 1050, 0.32, 0.040);
   }
 }

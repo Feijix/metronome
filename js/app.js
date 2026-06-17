@@ -26,6 +26,7 @@ class GapMetronomeApp {
     // Core instances
     this.state = new StateManager();
     this.audio = new MetronomeAudio();
+    this.audio.setSoundType(this.state.getSoundType()); // restore persisted choice
     this.scheduler = new MetronomeScheduler(this.state, this.audio);
     this.tapTempo = new TapTempo(this.state, this.audio);
   }

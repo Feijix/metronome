@@ -92,8 +92,8 @@ export class ThemeManager {
       root.style.setProperty(property, value);
     });
 
-    document.body.style.background = 'linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%)';
-    document.body.style.backgroundAttachment = 'fixed';
+    // Flat background colour on html; CSS var(--bg-primary) drives it.
+    document.documentElement.style.background = theme.colors['--bg-primary'];
 
     // Dispatch theme change event
     window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: themeName } }));

@@ -28,12 +28,7 @@ export class SubdivisionControl {
       img.alt = sub.label;
       img.className = 'picker-opt-img';
 
-      const labelSpan = document.createElement('span');
-      labelSpan.className = 'picker-opt-label';
-      labelSpan.textContent = sub.label;
-
       btn.appendChild(img);
-      btn.appendChild(labelSpan);
       btn.addEventListener('click', () => {
         this.state.setSubdivision(sub.id);
         this.close();
