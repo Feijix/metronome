@@ -22,6 +22,18 @@ export class SettingsPanel {
     this.subscribeToState();
     this.updatePresetList();
     this.updateThemeUI();
+    this.syncInitialUI();
+  }
+
+  // Reflect the persisted config into the settings UI on load (sound choice,
+  // toggles) so reopening the app shows the saved selections.
+  syncInitialUI() {
+    this.updateSoundSelection(this.state.getSoundType());
+    this.updateVibrate(this.state.getVibrate());
+    this.updateAccentOne(this.state.getAccentOne());
+    this.updateAccentQuarters(this.state.getAccentQuarters());
+    this.updateFlashToggle(this.state.getFlashOnChange());
+    this.updateWakeLockToggle(this.state.getKeepAwake());
   }
 
   /**
@@ -79,6 +91,13 @@ export class SettingsPanel {
       this.elements.settingsFlash.addEventListener('click', () => {
         const newValue = !this.state.getFlashOnChange();
         this.state.setFlashOnChange(newValue);
+      });
+    }
+
+    // Vibrate toggle
+    if (this.elements.settingsVibrate) {
+      this.elements.settingsVibrate.addEventListener('click', () => {
+        this.state.setVibrate(!this.state.getVibrate());
       });
     }
 
@@ -152,6 +171,13 @@ export class SettingsPanel {
     this.state.subscribe('accentQuarters', (value) => this.updateAccentQuarters(value));
     this.state.subscribe('flashOnChange', (value) => this.updateFlashToggle(value));
     this.state.subscribe('keepAwake', (value) => this.updateWakeLockToggle(value));
+    this.state.subscribe('vibrate', (value) => this.updateVibrate(value));
+  }
+
+  updateVibrate(value) {
+    if (this.elements.settingsVibrate) {
+      this.elements.settingsVibrate.classList.toggle('active', value);
+    }
   }
 
   /**

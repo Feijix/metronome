@@ -12,6 +12,7 @@ export class BeatsVisualizer {
 
   subscribeToState() {
     this.state.subscribe('timeSignature', () => this.rebuild());
+    this.state.subscribe('beatMutes', () => this.applyMutes());
     this.state.subscribe('beatTick', (data) => this.highlightBeat(data));
     this.state.subscribe('playState', (isPlaying) => {
       if (!isPlaying) this.clearHighlights();
@@ -23,22 +24,38 @@ export class BeatsVisualizer {
   }
 
   rebuild() {
-    const timeSignature = this.state.getState().config.timeSignature;
+    const n = this.state.getState().config.timeSignature;
     this.container.innerHTML = '';
     this.beatElements = [];
 
-    for (let i = 0; i < timeSignature; i++) {
-      const beat = this.createBeatElement(i);
+    // Shrink dots + gap as the beat count grows so up to 16 fit in one row.
+    const size = n <= 6 ? 48 : n <= 9 ? 38 : n <= 12 ? 30 : 22;
+    const gap  = n <= 6 ? 12 : n <= 12 ? 8 : 5;
+    this.container.style.gap = `${gap}px`;
+
+    for (let i = 0; i < n; i++) {
+      const beat = this.createBeatElement(i, size);
       this.container.appendChild(beat);
       this.beatElements.push(beat);
     }
   }
 
-  createBeatElement(index) {
+  createBeatElement(index, size) {
     const beat = document.createElement('div');
     beat.className = 'beat' + (index === 0 ? ' downbeat' : '');
     beat.dataset.beat = index;
+    beat.style.width = beat.style.height = `${size}px`;
+    if (this.state.isBeatMuted(index)) beat.classList.add('muted');
+    // Tap a beat to silence it / re-enable its sound.
+    beat.addEventListener('click', () => this.state.toggleBeatMute(index));
     return beat;
+  }
+
+  // Re-apply muted classes after a mute toggle (no full rebuild).
+  applyMutes() {
+    this.beatElements.forEach((el, i) => {
+      el.classList.toggle('muted', this.state.isBeatMuted(i));
+    });
   }
 
   highlightBeat(data) {

@@ -1,90 +1,71 @@
-import { SoundFactory } from './audio/SoundFactory.js';
+import { SamplePlayer } from './audio/SamplePlayer.js';
+import { SAMPLE_CONFIG, DEFAULT_SOUND } from '../config/constants.js';
 
 /**
- * MetronomeAudio manages audio synthesis for the metronome
- * Uses pluggable synthesizers via SoundFactory pattern
+ * MetronomeAudio plays sample-backed click sounds. Each sound type maps to a
+ * CC0/PD recording loaded and trimmed to a single hit by SamplePlayer.
  */
 export class MetronomeAudio {
   constructor() {
     this.audioContext = null;
     this.isInitialized = false;
-    this.currentSynthesizer = null;
-    this.soundType = 'clave'; // Default sound type
+    this.soundType = DEFAULT_SOUND;
+    this.players = new Map(); // soundType -> SamplePlayer
   }
 
-  /**
-   * Initialize audio context and default synthesizer
-   */
   init() {
     if (this.isInitialized) return;
     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    this.updateSynthesizer();
+    if (this.audioContext.resume) this.audioContext.resume().catch(() => {});
     this.isInitialized = true;
+    this._ensurePlayer(this.soundType);
   }
 
-  /**
-   * Change the sound type and update synthesizer
-   * @param {string} type - Sound type ('clave', 'digital', 'rimshot', etc.)
-   */
   setSoundType(type) {
-    this.soundType = type;
-    if (this.audioContext) {
-      this.updateSynthesizer();
-    }
+    if (SAMPLE_CONFIG[type]) this.soundType = type;
+    if (this.audioContext) this._ensurePlayer(this.soundType);
+  }
+
+  // Create + begin loading the player for a sound type (decoding needs the
+  // AudioContext, so this is a no-op until init() has run).
+  _ensurePlayer(type) {
+    if (this.players.has(type)) return this.players.get(type);
+    const cfg = SAMPLE_CONFIG[type];
+    if (!cfg) return null;
+    const player = new SamplePlayer(this.audioContext, cfg.file, { window: cfg.window });
+    this.players.set(type, player);
+    player.load().catch(() => {}); // failures already logged; play() no-ops until loaded
+    return player;
   }
 
   /**
-   * Create/update synthesizer instance based on current sound type
-   */
-  updateSynthesizer() {
-    this.currentSynthesizer = SoundFactory.createSynthesizer(
-      this.soundType,
-      this.audioContext
-    );
-  }
-
-  /**
-   * Play a click sound
-   * @param {string} type - Click type ('downbeat', 'quarter', 'subdivision', 'normal')
-   * @param {number} time - Web Audio API time to play the sound
+   * Play a click. Silently no-ops if the sample isn't decoded yet.
+   * @param {string} type - 'downbeat' | 'quarter' | 'subdivision' | 'normal'
+   * @param {number} time - Web Audio time to play the sound
    */
   playClick(type = 'normal', time = 0) {
-    if (!this.currentSynthesizer) return;
+    const player = this.players.get(this.soundType);
+    const cfg = SAMPLE_CONFIG[this.soundType];
+    if (!player || !player.buffer || !cfg) return;
 
     const now = time || this.audioContext.currentTime;
-
-    switch (type) {
-      case 'downbeat':
-        this.currentSynthesizer.playAccent(now);
-        break;
-      case 'quarter':
-        this.currentSynthesizer.playQuarter(now);
-        break;
-      case 'subdivision':
-        this.currentSynthesizer.playSubdivision(now);
-        break;
-      default:
-        // Default to quarter for 'normal' type
-        this.currentSynthesizer.playQuarter(now);
-    }
+    const lv = cfg.levels;
+    const level = type === 'downbeat' ? lv.accent
+                : type === 'subdivision' ? lv.sub
+                : lv.quarter; // 'quarter' and 'normal'
+    player.play(now, level.gain, level.rate);
   }
 
-  /**
-   * Get current audio context time
-   */
   get currentTime() {
     return this.audioContext ? this.audioContext.currentTime : 0;
   }
 
-  /**
-   * Clean up audio resources
-   */
   cleanup() {
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;
       this.isInitialized = false;
-      this.currentSynthesizer = null;
+      this.players.clear();
     }
   }
 }

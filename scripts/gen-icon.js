@@ -1,12 +1,12 @@
-// Generates PNG app icons from wittner_metronome.jpg.
-// Paints over the scale face and logo to remove all text/symbols,
-// keeps the metronome shape/contours, then adds padding and resizes.
+// Generates PNG app icons from the cartoon metronome vector.
+// Trims the surrounding whitespace, then centres the metronome inside a white
+// square at a comfortable size for launcher / PWA icons.
 
 const sharp = require('sharp');
 const path  = require('path');
 const fs    = require('fs');
 
-const SRC     = path.join(__dirname, '..', 'wittner_metronome.jpg');
+const SRC     = path.join(__dirname, '..', 'classic-metronome-icon-cartoon-style-vector.jpg');
 const RES_DIR = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
 const ROOT    = path.join(__dirname, '..');
 
@@ -18,74 +18,67 @@ const DENSITIES = [
   { name: 'xxxhdpi', size: 192 },
 ];
 
-// Extra white padding added on each side so the metronome reads smaller
-// and sits comfortably inside the icon frame.
-const PAD = 400; // pixels added on each side (at source resolution)
+const WHITE  = { r: 255, g: 255, b: 255, alpha: 1 };
+const CANVAS = 1024;             // master icon resolution
+// ~20% smaller than before (0.62 → ~0.50) so it sits cleanly inside a circle mask.
+const INNER  = Math.round(CANVAS * 0.50);
+
+// Recolour the (red) metronome to black while keeping the white scale white.
+// Map luminance through a smoothstep: dark/coloured body → black, highlights →
+// white, with a smooth ramp so antialiased edges stay clean.
+function blackenToBuffer(rawData) {
+  const { data } = rawData;
+  const lo = 110, hi = 210;
+  for (let i = 0; i < data.length; i += 4) {
+    const L = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    let t = (L - lo) / (hi - lo);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const v = Math.round(255 * (t * t * (3 - 2 * t)));
+    data[i] = data[i + 1] = data[i + 2] = v; // alpha untouched
+  }
+  return data;
+}
 
 async function main() {
-  const meta = await sharp(SRC).metadata();
-  const W = meta.width;   // 1200
-  const H = meta.height;  // 1200
-  console.log(`Source: ${W}×${H}`);
+  // 1. Trim the white border so we have tight metronome bounds.
+  const trimmed = await sharp(SRC).trim().toBuffer();
+  const tMeta = await sharp(trimmed).metadata();
+  console.log(`Trimmed metronome: ${tMeta.width}×${tMeta.height}`);
 
-  // ── 1. Paint over text/symbols ─────────────────────────────────────────
-  // Scale face (the large numbered panel that runs most of the body height).
-  // Fill with a flat warm light-gray that matches the untextured portions of
-  // the panel.  This removes all BPM numbers while keeping the face visible.
-  //
-  // Logo plate: fill with the body dark colour so it disappears into the body.
-  //
-  // Coordinates measured from the 1200×1200 source.
-  // Source coordinates (script adds PAD before compositing).
-  // At PAD=400 the final image is 2000×2000.  Scale face numbers are ~12px
-  // tall in source → <2px at 192px icon size — invisible due to downscaling.
-  // Only the logo plate has text large enough to read at launcher icon sizes.
-  const paints = [
-    // Logo plate + "made in Germany": source x≈290–822, y≈656–824
-    { left: 290, top: 656, width: 532, height: 170, fill: '#1b1919' },
-  ];
+  // 2. Recolour red → black via a raw-pixel luminance remap.
+  const raw = await sharp(trimmed).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const blackened = blackenToBuffer(raw);
+  const blackBuf = await sharp(blackened, {
+    raw: { width: raw.info.width, height: raw.info.height, channels: 4 },
+  }).png().toBuffer();
 
-  const overlays = paints.map(r => ({
-    input: Buffer.from(
-      `<svg width="${r.width}" height="${r.height}">
-         <rect width="${r.width}" height="${r.height}" fill="${r.fill}"/>
-       </svg>`
-    ),
-    left: r.left,
-    top:  r.top,
-  }));
-
-  // ── 2. Add white padding so the metronome sits small inside the icon ───
-  // Sharp applies .extend() BEFORE .composite() internally regardless of call
-  // order.  So composite coordinates must be offset by PAD to hit the right
-  // position in the extended (1200+2*PAD) × (1200+2*PAD) image.
-  const paddedOverlays = overlays.map(o => ({
-    ...o, left: o.left + PAD, top: o.top + PAD,
-  }));
-
-  const padded = await sharp(SRC)
-    .extend({ top: PAD, bottom: PAD, left: PAD, right: PAD,
-               background: { r: 255, g: 255, b: 255, alpha: 1 } })
-    .composite(paddedOverlays)
+  // 3. Scale it to fit within INNER×INNER (keeps aspect ratio).
+  const fitted = await sharp(blackBuf)
+    .resize({ width: INNER, height: INNER, fit: 'contain', background: WHITE })
     .toBuffer();
 
-  const totalSize = W + PAD * 2; // 1600
+  // 3. Centre it on a white CANVAS×CANVAS square.
+  const master = await sharp({
+      create: { width: CANVAS, height: CANVAS, channels: 4, background: WHITE },
+    })
+    .composite([{ input: fitted, gravity: 'center' }])
+    .png()
+    .toBuffer();
 
-  // ── 3. Resize and write ───────────────────────────────────────────────
+  // 4. Resize + write all Android densities (launcher, round, adaptive fg).
   for (const { name, size } of DENSITIES) {
     const dir = path.join(RES_DIR, `mipmap-${name}`);
     fs.mkdirSync(dir, { recursive: true });
-    const png = await sharp(padded).resize(size, size).png().toBuffer();
+    const png = await sharp(master).resize(size, size).png().toBuffer();
     fs.writeFileSync(path.join(dir, 'ic_launcher.png'),            png);
     fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'),      png);
     fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), png);
     console.log(`  ${name} ${size}×${size}`);
   }
 
-  const p192 = await sharp(padded).resize(192, 192).png().toBuffer();
-  const p512 = await sharp(padded).resize(512, 512).png().toBuffer();
-  fs.writeFileSync(path.join(ROOT, 'icon-192.png'), p192);
-  fs.writeFileSync(path.join(ROOT, 'icon-512.png'), p512);
+  // 5. PWA icons.
+  fs.writeFileSync(path.join(ROOT, 'icon-192.png'), await sharp(master).resize(192, 192).png().toBuffer());
+  fs.writeFileSync(path.join(ROOT, 'icon-512.png'), await sharp(master).resize(512, 512).png().toBuffer());
   console.log('  PWA 192 + 512');
   console.log('Done.');
 }

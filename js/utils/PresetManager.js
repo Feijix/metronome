@@ -1,3 +1,5 @@
+import { SOUND_TYPES, DEFAULT_SOUND } from '../config/constants.js';
+
 export class PresetManager {
   constructor(stateManager) {
     this.state = stateManager;
@@ -19,22 +21,30 @@ export class PresetManager {
     if (presetData) {
       const stateData = JSON.parse(presetData);
 
-      this.state.setBPM(stateData.config.bpm);
-      this.state.setTimeSignature(stateData.config.timeSignature);
-      this.state.setSubdivision(PresetManager.migrateSubdivision(stateData.config.subdivision));
-      this.state.setClickBars(stateData.config.clickBars);
-      this.state.setGapBars(stateData.config.gapBars);
+      const cfg = stateData.config;
+      this.state.setBPM(cfg.bpm);
+      this.state.setTimeSignature(cfg.timeSignature);
+      if (cfg.beatUnit) this.state.setBeatUnit(cfg.beatUnit);
+      this.state.setSubdivision(PresetManager.migrateSubdivision(cfg.subdivision));
+      this.state.setClickBars(cfg.clickBars);
+      this.state.setGapBars(cfg.gapBars);
+      this.state.setBeatMutes(cfg.beatMutes || []);
 
-      if (this.state.getAccentOne() !== stateData.config.accentOne) {
+      if (this.state.getAccentOne() !== cfg.accentOne) {
         this.state.toggleAccentOne();
       }
-      if (this.state.getAccentQuarters() !== stateData.config.accentQuarters) {
+      if (this.state.getAccentQuarters() !== cfg.accentQuarters) {
         this.state.toggleAccentQuarters();
       }
 
-      this.state.setSoundType(stateData.config.soundType || 'clave');
-      this.state.setFlashOnChange(stateData.config.flashOnChange || false);
-      this.state.setKeepAwake(stateData.config.keepAwake || false);
+      if (SOUND_TYPES.includes(cfg.soundType)) {
+        this.state.setSoundType(cfg.soundType);
+      } else {
+        this.state.setSoundType(DEFAULT_SOUND);
+      }
+      this.state.setVibrate(cfg.vibrate ?? true);
+      this.state.setFlashOnChange(cfg.flashOnChange || false);
+      this.state.setKeepAwake(cfg.keepAwake || false);
     }
   }
 

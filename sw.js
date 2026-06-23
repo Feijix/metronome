@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gap-metronome-v37';
+const CACHE_NAME = 'gap-metronome-v40';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -11,11 +11,13 @@ const urlsToCache = [
   '/js/core/StateManager.js',
   '/js/core/MetronomeAudio.js',
   '/js/core/MetronomeScheduler.js',
-  '/js/core/audio/SoundFactory.js',
-  '/js/core/audio/synthesizers/DigitalSynthesizer.js',
-  '/js/core/audio/synthesizers/MechanicalSynthesizer.js',
-  '/js/core/audio/synthesizers/DrumstickSynthesizer.js',
-  '/js/core/audio/synthesizers/VibrateSynthesizer.js',
+  '/js/core/audio/SamplePlayer.js',
+  '/assets/sounds/digital.wav',
+  '/assets/sounds/mechanical.ogg',
+  '/assets/sounds/drumstick.ogg',
+  '/assets/sounds/cowbell.ogg',
+  '/assets/sounds/block.wav',
+  '/assets/sounds/shaker.ogg',
   '/js/features/TapTempo.js',
   '/js/ui/BPMDisplay.js',
   '/js/ui/BeatsVisualizer.js',
@@ -62,28 +64,20 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST, cache as offline fallback.
+// In the Capacitor app "network" is the locally-bundled asset, so freshly
+// installed files always win (no stale cache after an app update). The cache
+// is only used when offline, preserving PWA offline support in the browser.
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
+        if (response && response.status === 200 && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
-        return fetch(event.request).then(response => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          // Clone the response
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          return response;
-        });
+        return response;
       })
+      .catch(() => caches.match(event.request))
   );
 });

@@ -48,6 +48,7 @@ export class DOMHelpers {
       settingsAccentOne:     document.getElementById('settings-accent-one'),
       settingsAccentQuarters:document.getElementById('settings-accent-quarters'),
       settingsFlash:         document.getElementById('settings-flash'),
+      settingsVibrate:       document.getElementById('settings-vibrate'),
       settingsWakeLock:      document.getElementById('settings-wake-lock'),
       presetName:    document.getElementById('preset-name'),
       savePreset:    document.getElementById('save-preset'),

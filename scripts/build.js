@@ -25,7 +25,7 @@ fs.mkdirSync(OUT);
 });
 
 // Directories
-['css', 'js'].forEach(dir => {
+['css', 'js', 'assets'].forEach(dir => {
   const src = path.join(ROOT, dir);
   if (fs.existsSync(src)) copyDir(src, path.join(OUT, dir));
 });

@@ -525,11 +525,12 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   overflow-y: auto;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
 }
 
 .settings-panel.active {
   transform: translateY(0);
+  /* Shadow only while open — otherwise it bleeds up past the bottom edge. */
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
 }
 
 .settings-header {
@@ -969,15 +970,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.2rem;
-  padding: 0.65rem 1.1rem;
+  padding: 0 0.6rem;
+  width: 94px;
+  height: 58px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   color: var(--text-primary);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, transform 0.1s;
-  min-width: 80px;
   touch-action: manipulation;
 }
 
@@ -1007,10 +1010,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 24px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .selector-note-img {
-  height: 26px;
+  height: 22px;
+  max-width: 100%;
   width: auto;
   display: block;
   filter: var(--note-filter);
@@ -1137,7 +1144,11 @@
 }
 
 .tap-tempo-main {
-  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58px;
+  padding: 0 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border);
   background: var(--bg-overlay);
@@ -1222,4 +1233,171 @@
 
 .screen-flash.active {
   opacity: 1;
+}
+
+/* Tappable beats — click to silence / re-enable a beat */
+.beat {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.beat.muted {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+.beat.muted::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: var(--text-muted);
+  transform: rotate(-45deg);
+}
+
+.beat.muted.active {
+  opacity: 0.65;
+}
+
+/* Time-signature editor (dual sliders) */
+.timesig-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.25rem 0.25rem 0;
+}
+
+.timesig-fraction {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.timesig-fraction .ts-slash {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.timesig-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.timesig-row-label {
+  width: 92px;
+  flex-shrink: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.timesig-slider-wrap {
+  flex: 1;
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+/* Visible track behind the (transparent) range input. */
+.timesig-slider-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  z-index: 0;
+}
+
+/* Tick marks sitting on the track, beneath the thumb. */
+.timesig-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 11px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.timesig-ticks .tick {
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+
+.timesig-slider {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 26px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+.timesig-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.timesig-slider::-moz-range-track {
+  height: 6px;
+  background: transparent;
+}
+
+.timesig-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -9px; /* centre the 24px thumb on the 6px track */
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+
+.timesig-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+
+.timesig-done {
+  margin-top: 0.25rem;
+  width: 100%;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: var(--accent);
+  color: var(--bg-dark);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
 }

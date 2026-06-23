@@ -100,7 +100,7 @@
   <div class="picker-overlay" id="time-sig-picker">
     <div class="picker-sheet">
       <div class="picker-title">Time Signature</div>
-      <div class="picker-grid picker-grid-row" id="time-sig-options"></div>
+      <div class="timesig-editor" id="time-sig-options"></div>
     </div>
   </div>
 
@@ -137,7 +137,9 @@
           <button class="sound-option" data-sound="digital">Digital</button>
           <button class="sound-option" data-sound="mechanical">Mechanical</button>
           <button class="sound-option" data-sound="drumstick">Drumstick</button>
-          <button class="sound-option" data-sound="vibrate">Vibrate</button>
+          <button class="sound-option" data-sound="cowbell">Cowbell</button>
+          <button class="sound-option" data-sound="block">Block</button>
+          <button class="sound-option" data-sound="shaker">Shaker</button>
         </div>
       </div>
 
@@ -160,6 +162,15 @@
         <div class="settings-toggle-row">
           <span>Flash on pattern change</span>
           <button class="toggle" id="settings-flash"></button>
+        </div>
+      </div>
+
+      <!-- Haptics -->
+      <div class="settings-section">
+        <div class="settings-label">Haptics</div>
+        <div class="settings-toggle-row">
+          <span>Vibrate on beats</span>
+          <button class="toggle active" id="settings-vibrate"></button>
         </div>
       </div>
 

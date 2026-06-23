@@ -1,10 +1,11 @@
 import {
   BPM_CONSTANTS,
-  TIME_SIGNATURES,
+  TIME_SIG,
   SUBDIVISIONS,
   SUBDIVISION_MAP,
   GAP_PATTERN_LIMITS,
   SOUND_TYPES,
+  DEFAULT_SOUND,
   DEFAULT_STATE
 } from '../config/constants.js';
 
@@ -37,6 +38,21 @@ export class StateManager {
       const raw = localStorage.getItem('gm-config');
       if (raw) this.config = { ...DEFAULT_STATE, ...JSON.parse(raw) };
     } catch(e) {}
+    this.sanitizeConfig();
+  }
+
+  // Repair values from older/invalid saves so the UI and audio stay consistent.
+  sanitizeConfig() {
+    if (!SOUND_TYPES.includes(this.config.soundType)) {
+      this.config.soundType = DEFAULT_SOUND;
+    }
+    if (!TIME_SIG.DENOMINATORS.includes(this.config.beatUnit)) {
+      this.config.beatUnit = TIME_SIG.DEFAULT_DEN;
+    }
+    const n = Math.max(TIME_SIG.NUM_MIN, Math.min(TIME_SIG.NUM_MAX, this.config.timeSignature | 0));
+    this.config.timeSignature = n || TIME_SIG.DEFAULT_NUM;
+    if (typeof this.config.vibrate !== 'boolean') this.config.vibrate = true;
+    this.ensureBeatMutesLength();
   }
 
   // BPM Management with validation
@@ -57,19 +73,80 @@ export class StateManager {
     return this.config.bpm;
   }
 
-  // Time Signature with validation
+  // Time signature numerator (beats per bar). Clamped to [NUM_MIN, NUM_MAX].
   setTimeSignature(value) {
-    if (TIME_SIGNATURES.includes(value)) {
-      this.config.timeSignature = value;
-      this.notify('timeSignature', value);
+    const v = Math.max(TIME_SIG.NUM_MIN, Math.min(TIME_SIG.NUM_MAX, Math.round(value)));
+    if (this.config.timeSignature !== v) {
+      this.config.timeSignature = v;
+      this.ensureBeatMutesLength();
+      this.notify('timeSignature', v);
       this.saveToStorage();
-    } else {
-      throw new Error(`Invalid time signature: ${value}`);
     }
+    return v;
   }
 
   getTimeSignature() {
     return this.config.timeSignature;
+  }
+
+  // Time signature denominator (beat note value). Label-only — does not affect
+  // click timing. Must be one of TIME_SIG.DENOMINATORS.
+  setBeatUnit(value) {
+    if (TIME_SIG.DENOMINATORS.includes(value) && this.config.beatUnit !== value) {
+      this.config.beatUnit = value;
+      this.notify('beatUnit', value);
+      this.saveToStorage();
+    }
+    return this.config.beatUnit;
+  }
+
+  getBeatUnit() {
+    return this.config.beatUnit;
+  }
+
+  // ── Per-beat mute ────────────────────────────────────────────────────────
+  // beatMutes[i] === true means beat i is silenced. Length tracks the numerator.
+  ensureBeatMutesLength() {
+    const n = this.config.timeSignature;
+    let m = Array.isArray(this.config.beatMutes) ? this.config.beatMutes.slice(0, n) : [];
+    while (m.length < n) m.push(false);
+    this.config.beatMutes = m.map(Boolean);
+  }
+
+  getBeatMutes() {
+    this.ensureBeatMutesLength();
+    return this.config.beatMutes;
+  }
+
+  isBeatMuted(index) {
+    return !!this.config.beatMutes[index];
+  }
+
+  setBeatMutes(arr) {
+    this.config.beatMutes = Array.isArray(arr) ? arr.map(Boolean) : [];
+    this.ensureBeatMutesLength();
+    this.notify('beatMutes', this.config.beatMutes);
+    this.saveToStorage();
+  }
+
+  toggleBeatMute(index) {
+    this.ensureBeatMutesLength();
+    if (index < 0 || index >= this.config.beatMutes.length) return;
+    this.config.beatMutes[index] = !this.config.beatMutes[index];
+    this.notify('beatMutes', this.config.beatMutes);
+    this.saveToStorage();
+    return this.config.beatMutes[index];
+  }
+
+  // Vibration (haptics) on/off — independent of the click sound.
+  setVibrate(value) {
+    this.config.vibrate = !!value;
+    this.notify('vibrate', this.config.vibrate);
+    this.saveToStorage();
+  }
+
+  getVibrate() {
+    return this.config.vibrate;
   }
 
   // Subdivision with validation

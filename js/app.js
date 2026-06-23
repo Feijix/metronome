@@ -20,6 +20,15 @@ class GapMetronomeApp {
     this.initializeUI();
     this.initializePWA();
     this.setupKeyboardShortcuts();
+    this.setupAudioWarmup();
+  }
+
+  // Warm up the audio engine (create context + decode the current sample) on
+  // the first user gesture so the very first click isn't clipped while loading.
+  setupAudioWarmup() {
+    const warm = () => this.audio.init();
+    window.addEventListener('pointerdown', warm, { once: true });
+    window.addEventListener('keydown', warm, { once: true });
   }
 
   initializeCore() {

@@ -43,9 +43,12 @@ export class MetronomeScheduler {
     const secondsPerBeat = 60.0 / config.bpm;
     const secondsPerSubBeat = secondsPerBeat / subDef.resolution;
 
-    // Play sound if not in gap mode and this tick is active in the pattern
+    // Play sound if not in gap mode, this tick is active in the pattern, and
+    // the current beat hasn't been muted by the user.
     let clickType = null;
-    if (!runtime.isGapMode && subDef.pattern[runtime.currentSubBeat]) {
+    if (!runtime.isGapMode
+        && subDef.pattern[runtime.currentSubBeat]
+        && !this.state.isBeatMuted(runtime.currentBeat)) {
       clickType = this.determineClickType(config, runtime);
       this.audio.playClick(clickType, this.nextNoteTime);
     }
@@ -85,11 +88,9 @@ export class MetronomeScheduler {
         bar,
         barTotal
       });
-      if (navigator.vibrate) {
-        const vibrateMode = this.state.getSoundType() === 'vibrate';
-        if (clickType === 'downbeat')     navigator.vibrate(vibrateMode ? 80 : 20);
-        else if (clickType === 'quarter') navigator.vibrate(vibrateMode ? 50 : 10);
-        else if (vibrateMode)             navigator.vibrate(22);
+      if (navigator.vibrate && this.state.getVibrate()) {
+        if (clickType === 'downbeat')     navigator.vibrate(22);
+        else if (clickType === 'quarter') navigator.vibrate(12);
       }
     }, delay);
   }

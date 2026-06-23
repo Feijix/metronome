@@ -36,8 +36,16 @@ export const SCHEDULING_CONSTANTS = {
   INITIAL_DELAY: 0.05
 };
 
-// Available time signatures
-export const TIME_SIGNATURES = [3, 4, 5, 7];
+// Time signature: numerator (beats per bar) is a free range; denominator
+// (beat note value) is a fixed set. Denominator is label-only — the numerator
+// drives the beat count and BPM is the beat rate.
+export const TIME_SIG = {
+  NUM_MIN: 1,
+  NUM_MAX: 16,
+  DENOMINATORS: [1, 2, 4, 8],
+  DEFAULT_NUM: 4,
+  DEFAULT_DEN: 4,
+};
 
 // Subdivisions: each entry defines a rhythmic pattern within one beat.
 // resolution = ticks per beat (grid); pattern = which ticks produce a sound.
@@ -72,12 +80,38 @@ export const GAP_PATTERN_LIMITS = {
   GAP_DEFAULT: 2
 };
 
-export const SOUND_TYPES = [
-  'digital',
-  'mechanical',
-  'drumstick',
-  'vibrate',
-];
+// Sample-backed click sounds. Each plays the first transient of a CC0/PD
+// recording (see assets/sounds/CREDITS.md). `window` = seconds of the hit to
+// play; `levels` = per-accent gain + playbackRate (rate gives hi/lo pitch).
+export const SAMPLE_CONFIG = {
+  digital: {
+    label: 'Digital', file: 'assets/sounds/digital.wav', window: 0.12,
+    levels: { accent: { gain: 1.00, rate: 1.18 }, quarter: { gain: 0.70, rate: 1.0 }, sub: { gain: 0.42, rate: 0.9 } },
+  },
+  mechanical: {
+    label: 'Mechanical', file: 'assets/sounds/mechanical.ogg', window: 0.11,
+    levels: { accent: { gain: 1.00, rate: 1.06 }, quarter: { gain: 0.78, rate: 1.0 }, sub: { gain: 0.52, rate: 1.0 } },
+  },
+  drumstick: {
+    label: 'Drumstick', file: 'assets/sounds/drumstick.ogg', window: 0.11,
+    levels: { accent: { gain: 1.00, rate: 1.08 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 0.95 } },
+  },
+  cowbell: {
+    label: 'Cowbell', file: 'assets/sounds/cowbell.ogg', window: 0.30,
+    levels: { accent: { gain: 1.00, rate: 1.10 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 1.0 } },
+  },
+  block: {
+    label: 'Block', file: 'assets/sounds/block.wav', window: 0.13,
+    levels: { accent: { gain: 1.00, rate: 1.12 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 0.92 } },
+  },
+  shaker: {
+    label: 'Shaker', file: 'assets/sounds/shaker.ogg', window: 0.28,
+    levels: { accent: { gain: 1.00, rate: 1.03 }, quarter: { gain: 0.72, rate: 1.0 }, sub: { gain: 0.48, rate: 1.0 } },
+  },
+};
+
+export const SOUND_TYPES = Object.keys(SAMPLE_CONFIG);
+export const DEFAULT_SOUND = 'mechanical';
 
 // Tap tempo constants
 export const TAP_TEMPO_CONSTANTS = {
@@ -101,13 +135,16 @@ export const TEMPO_MARKINGS = [
 // Default state configuration
 export const DEFAULT_STATE = {
   bpm: BPM_CONSTANTS.DEFAULT,
-  timeSignature: 4,
+  timeSignature: TIME_SIG.DEFAULT_NUM, // numerator: beats per bar
+  beatUnit: TIME_SIG.DEFAULT_DEN,      // denominator: beat note value (label only)
   subdivision: 'q',
   clickBars: GAP_PATTERN_LIMITS.CLICK_DEFAULT,
   gapBars: GAP_PATTERN_LIMITS.GAP_DEFAULT,
   accentOne: true,
   accentQuarters: true,
-  soundType: 'mechanical',
+  soundType: DEFAULT_SOUND,
+  vibrate: true,
+  beatMutes: [],          // per-beat mute flags; length tracks the numerator
   flashOnChange: false,
   keepAwake: false
 };
