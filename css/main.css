@@ -1,3 +1,13 @@
+/* Bravura — SMuFL music-notation font (SIL Open Font License 1.1).
+   Used by NoteRenderer to draw noteheads/rests/dots/tuplet numerals. */
+@font-face {
+  font-family: 'Bravura';
+  src: url('../assets/fonts/Bravura.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Reset and Base Styles */
 *,
 *::before,
@@ -51,13 +61,19 @@ html {
 
 body {
   height: 100%;
-  overflow: hidden;
+  /* Scroll fallback: on very short screens content can exceed the viewport.
+     Let body scroll (html stays overflow:hidden so it never rubber-bands)
+     so the bottom controls are always reachable instead of being clipped. */
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: none;
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: transparent; /* gradient is on html */
   color: var(--text-primary);
   display: flex;
-  align-items: center;
+  /* flex-start (not center): when content is taller than the viewport it
+     overflows downward and scrolls, instead of spilling off both edges. */
+  align-items: flex-start;
   justify-content: center;
   padding: 0;
   touch-action: manipulation;
@@ -69,26 +85,68 @@ body {
 .app {
   width: 100%;
   max-width: 420px;
-  height: 100%;
+  /* min-height (not fixed height): fills the screen when content fits, but is
+     free to grow past the viewport on short screens so nothing gets clipped. */
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-evenly;
   gap: 0;
   position: relative;
+  /* Safe-area insets: Capacitor injects --safe-area-inset-* (needs
+     viewport-fit=cover); env() is the fallback for the browser PWA. This keeps
+     content clear of the status/navigation bars (incl. landscape side bars). */
   padding: clamp(0.5rem, 2svh, 1.25rem) 1rem;
-  padding-top:    max(clamp(0.5rem, 2svh, 1.25rem), env(safe-area-inset-top));
-  padding-bottom: max(clamp(0.5rem, 2svh, 1.25rem), env(safe-area-inset-bottom));
+  padding-top:    max(clamp(0.5rem, 2svh, 1.25rem), var(--safe-area-inset-top,    env(safe-area-inset-top,    0px)));
+  padding-bottom: max(clamp(0.5rem, 2svh, 1.25rem), var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-left:   max(1rem, var(--safe-area-inset-left,  env(safe-area-inset-left,  0px)));
+  padding-right:  max(1rem, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
 }
 
-/* Tablet/Desktop adjustments */
+/* Tablet / large screens (e.g. 12" tablet, portrait & landscape).
+   Sizes that could get tall use svh clamps so a short landscape tablet still
+   fits; the dial itself is height-capped in BPMDisplay.computeDialSize(). */
 @media (min-width: 768px) {
   .app {
     height: auto;
     min-height: 100dvh;
     justify-content: center;
-    gap: 1.5rem;
+    gap: clamp(0.75rem, 2.5svh, 2.25rem);
+    max-width: 660px;
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
+
+  .visualizer-top { margin-top: clamp(3rem, 7svh, 4.5rem); }
+
+  .play-btn-large {
+    width:  clamp(150px, 24svh, 210px);
+    height: clamp(150px, 24svh, 210px);
+  }
+  .play-icon {
+    width:  clamp(52px, 8svh, 70px);
+    height: clamp(52px, 8svh, 70px);
+  }
+
+  .wheel-scroll { height: clamp(130px, 20svh, 176px); width: 76px; }
+  .wheel-option { font-size: 1.5rem; }
+  .wheel-option.selected { font-size: 2rem; }
+  .pattern-arrow { font-size: 2.5rem; }
+  .gap-pattern-section { gap: clamp(1.5rem, 5vw, 3rem); }
+
+  .bpm-value-large { font-size: clamp(3.5rem, 7svh, 4.6rem); }
+  .tempo-name { font-size: 1rem; }
+  .bpm-nudge { width: 56px; height: 56px; font-size: 1.7rem; }
+
+  .selector-btn { width: 120px; height: 72px; }
+  .selector-value { font-size: 1.15rem; }
+  .selector-note-img { height: 30px; }
+  .tap-tempo-main { height: 72px; font-size: 1.3rem; padding: 0 2rem; }
+  .bottom-controls { gap: clamp(1.5rem, 5vw, 3rem); }
+
+  .bar-info-overlay { font-size: 0.95rem; padding: 0.6rem 1.25rem; }
+  .settings-icon { width: 52px; height: 52px; font-size: 1.5rem; }
 }
 
 /* Utility Classes */

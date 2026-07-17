@@ -52,6 +52,7 @@ export const TIME_SIG = {
 export const SUBDIVISIONS = [
   { id: 'q',    label: 'Quarter',      short: '♩',  resolution: 1, pattern: [true] },
   { id: '8',    label: '8th',          short: '♫',  resolution: 2, pattern: [true, true] },
+  { id: '8r1',  label: 'Offbeat 8th',  short: '𝄾♪', resolution: 2, pattern: [false, true] },
   { id: '8t',   label: '8th Triplet',  short: '8T', resolution: 3, pattern: [true, true, true] },
   { id: '16',   label: '16th',         short: '♬',  resolution: 4, pattern: [true, true, true, true] },
   { id: '16t',  label: '16th Triplet', short: '16T',resolution: 6, pattern: [true, true, true, true, true, true] },
@@ -83,29 +84,41 @@ export const GAP_PATTERN_LIMITS = {
 // Sample-backed click sounds. Each plays the first transient of a CC0/PD
 // recording (see assets/sounds/CREDITS.md). `window` = seconds of the hit to
 // play; `levels` = per-accent gain + playbackRate (rate gives hi/lo pitch).
+// Pitch scheme — a C-major triad, consonant to the ear:
+//   subdivision = C (root),  quarter = E (major third),  beat 1 = G (fifth).
+// `tune` places each sound's root C at the octave nearest its own natural
+// fundamental (measured) so nothing is over-shifted; the level `rate`s then add
+// the 1 : 1.25 : 1.5 (C:E:G, 4:5:6 just intonation) triad on top. Mechanical (a
+// tick) and Shaker (noise) are unpitched — tune 1, only a subtle rate accent.
+//   block  613Hz→C5(523)  cowbell 658Hz→C5(523)  clave 1131Hz→C6(1047)  digital 2005Hz→C7(2093)
+const TRIAD = { accent: 1.5, quarter: 1.25, sub: 1.0 }; // G / E / C
 export const SAMPLE_CONFIG = {
+  // trim:false → synthesized single-event samples play whole (natural envelope,
+  // full transient). preHit (shaker) shifts the start so its lead-in leads into
+  // the beat and the hit lands on-beat. clave/cowbell are recordings (trim on).
   digital: {
-    label: 'Digital', file: 'assets/sounds/digital.wav', window: 0.12,
-    levels: { accent: { gain: 1.00, rate: 1.18 }, quarter: { gain: 0.70, rate: 1.0 }, sub: { gain: 0.42, rate: 0.9 } },
+    label: 'Digital', file: 'assets/sounds/digital.wav', tune: 1.044, trim: false,
+    levels: { accent: { gain: 1.00, rate: TRIAD.accent }, quarter: { gain: 0.70, rate: TRIAD.quarter }, sub: { gain: 0.42, rate: TRIAD.sub } },
   },
   mechanical: {
-    label: 'Mechanical', file: 'assets/sounds/mechanical.ogg', window: 0.11,
-    levels: { accent: { gain: 1.00, rate: 1.06 }, quarter: { gain: 0.78, rate: 1.0 }, sub: { gain: 0.52, rate: 1.0 } },
+    // Louder gains — a very short click needs more level to match the ringing sounds.
+    label: 'Mechanical', file: 'assets/sounds/mechanical.wav', tune: 1.0, trim: false,
+    levels: { accent: { gain: 1.00, rate: 1.06 }, quarter: { gain: 0.80, rate: 1.0 }, sub: { gain: 0.56, rate: 0.96 } },
   },
-  drumstick: {
-    label: 'Drumstick', file: 'assets/sounds/drumstick.ogg', window: 0.11,
-    levels: { accent: { gain: 1.00, rate: 1.08 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 0.95 } },
+  clave: {
+    label: 'Clave', file: 'assets/sounds/clave.ogg', window: 0.11, tune: 0.925,
+    levels: { accent: { gain: 1.00, rate: TRIAD.accent }, quarter: { gain: 0.74, rate: TRIAD.quarter }, sub: { gain: 0.46, rate: TRIAD.sub } },
   },
   cowbell: {
-    label: 'Cowbell', file: 'assets/sounds/cowbell.ogg', window: 0.30,
-    levels: { accent: { gain: 1.00, rate: 1.10 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 1.0 } },
+    label: 'Cowbell', file: 'assets/sounds/cowbell.ogg', window: 0.30, tune: 0.795,
+    levels: { accent: { gain: 1.00, rate: TRIAD.accent }, quarter: { gain: 0.74, rate: TRIAD.quarter }, sub: { gain: 0.46, rate: TRIAD.sub } },
   },
   block: {
-    label: 'Block', file: 'assets/sounds/block.wav', window: 0.13,
-    levels: { accent: { gain: 1.00, rate: 1.12 }, quarter: { gain: 0.74, rate: 1.0 }, sub: { gain: 0.46, rate: 0.92 } },
+    label: 'Block', file: 'assets/sounds/block.wav', tune: 0.854, trim: false,
+    levels: { accent: { gain: 1.00, rate: TRIAD.accent }, quarter: { gain: 0.74, rate: TRIAD.quarter }, sub: { gain: 0.46, rate: TRIAD.sub } },
   },
   shaker: {
-    label: 'Shaker', file: 'assets/sounds/shaker.ogg', window: 0.28,
+    label: 'Shaker', file: 'assets/sounds/shaker.wav', tune: 1.0, trim: false, preHit: 0.045,
     levels: { accent: { gain: 1.00, rate: 1.03 }, quarter: { gain: 0.72, rate: 1.0 }, sub: { gain: 0.48, rate: 1.0 } },
   },
 };
@@ -144,6 +157,7 @@ export const DEFAULT_STATE = {
   accentQuarters: true,
   soundType: DEFAULT_SOUND,
   vibrate: true,
+  voiceCount: false,      // speak the click-bar number ("one, two…") at each bar
   beatMutes: [],          // per-beat mute flags; length tracks the numerator
   flashOnChange: false,
   keepAwake: false

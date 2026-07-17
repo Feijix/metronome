@@ -43,6 +43,8 @@ export class StateManager {
 
   // Repair values from older/invalid saves so the UI and audio stay consistent.
   sanitizeConfig() {
+    // Migration: 'drumstick' was renamed to 'clave' (same sample).
+    if (this.config.soundType === 'drumstick') this.config.soundType = 'clave';
     if (!SOUND_TYPES.includes(this.config.soundType)) {
       this.config.soundType = DEFAULT_SOUND;
     }
@@ -52,6 +54,7 @@ export class StateManager {
     const n = Math.max(TIME_SIG.NUM_MIN, Math.min(TIME_SIG.NUM_MAX, this.config.timeSignature | 0));
     this.config.timeSignature = n || TIME_SIG.DEFAULT_NUM;
     if (typeof this.config.vibrate !== 'boolean') this.config.vibrate = true;
+    if (typeof this.config.voiceCount !== 'boolean') this.config.voiceCount = false;
     this.ensureBeatMutesLength();
   }
 
@@ -147,6 +150,17 @@ export class StateManager {
 
   getVibrate() {
     return this.config.vibrate;
+  }
+
+  // Spoken bar-count on/off — announces the click-bar number at each bar start.
+  setVoiceCount(value) {
+    this.config.voiceCount = !!value;
+    this.notify('voiceCount', this.config.voiceCount);
+    this.saveToStorage();
+  }
+
+  getVoiceCount() {
+    return this.config.voiceCount;
   }
 
   // Subdivision with validation

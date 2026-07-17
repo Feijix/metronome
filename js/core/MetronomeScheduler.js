@@ -53,6 +53,16 @@ export class MetronomeScheduler {
       this.audio.playClick(clickType, this.nextNoteTime);
     }
 
+    // Announce the start of a Click bar at its exact audio time so the spoken
+    // count can be scheduled sample-accurately (not via the setTimeout visual
+    // path, which jitters and lagged behind the beat).
+    if (!runtime.isGapMode && runtime.currentBeat === 0 && runtime.currentSubBeat === 0) {
+      this.state.notify('barAudioStart', {
+        bar: runtime.barsInCurrentMode + 1,
+        time: this.nextNoteTime
+      });
+    }
+
     // Schedule visual update with proper timing
     this.scheduleVisualUpdate(runtime, config, clickType);
 
@@ -81,12 +91,15 @@ export class MetronomeScheduler {
     const bar = runtime.barsInCurrentMode + 1;
     const barTotal = runtime.isGapMode ? config.gapBars : config.clickBars;
     const isGap = runtime.isGapMode;
+    // First tick of a bar (downbeat) — used to trigger the spoken bar count.
+    const isBarStart = runtime.currentBeat === 0 && runtime.currentSubBeat === 0;
     setTimeout(() => {
       this.state.notify('beatTick', {
         beat: runtime.currentBeat,
         isGap,
         bar,
-        barTotal
+        barTotal,
+        isBarStart
       });
       if (navigator.vibrate && this.state.getVibrate()) {
         if (clickType === 'downbeat')     navigator.vibrate(22);

@@ -32,7 +32,9 @@ export class MetronomeAudio {
     if (this.players.has(type)) return this.players.get(type);
     const cfg = SAMPLE_CONFIG[type];
     if (!cfg) return null;
-    const player = new SamplePlayer(this.audioContext, cfg.file, { window: cfg.window });
+    const player = new SamplePlayer(this.audioContext, cfg.file, {
+      window: cfg.window, trim: cfg.trim, preHit: cfg.preHit
+    });
     this.players.set(type, player);
     player.load().catch(() => {}); // failures already logged; play() no-ops until loaded
     return player;
@@ -53,7 +55,8 @@ export class MetronomeAudio {
     const level = type === 'downbeat' ? lv.accent
                 : type === 'subdivision' ? lv.sub
                 : lv.quarter; // 'quarter' and 'normal'
-    player.play(now, level.gain, level.rate);
+    // `tune` shifts every sound to the Clave's note (see SAMPLE_CONFIG).
+    player.play(now, level.gain, level.rate * (cfg.tune ?? 1));
   }
 
   get currentTime() {

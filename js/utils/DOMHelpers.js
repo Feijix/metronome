@@ -18,6 +18,7 @@ export class DOMHelpers {
       // Gap pattern wheels
       clickWheel: document.getElementById('click-wheel'),
       gapWheel:   document.getElementById('gap-wheel'),
+      voiceToggle: document.getElementById('voice-toggle'),
 
       // Time signature picker
       timeSigBtn:     document.getElementById('time-sig-btn'),

@@ -759,7 +759,9 @@
 .visualizer-top {
   width: 100%;
   padding: 0.5rem 1rem;
-  margin-top: 3rem;
+  /* Must clear the fixed "CLICK — Bar x of x" overlay so the beat dots never
+     sit under it — but kept tight so the gap isn't excessive. */
+  margin-top: clamp(2.1rem, 4svh, 2.7rem);
 }
 
 /* Gap Pattern Wheels */
@@ -769,6 +771,62 @@
   justify-content: center;
   gap: 1.5rem;
   padding: 0 1rem;
+}
+
+/* Voice-count control (label + toggle) left of the Click wheel; the matching
+   .gap-section-spacer on the right keeps the Click/Gap wheels screen-centered. */
+.voice-control,
+.gap-section-spacer {
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.voice-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.voice-toggle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.1s;
+  touch-action: manipulation;
+}
+
+.voice-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text-secondary);
+}
+
+.voice-toggle:active {
+  transform: scale(0.93);
+}
+
+.voice-toggle.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(6, 182, 212, 0.12);
+}
+
+/* Sound waves dimmed when off, full when on */
+.voice-toggle .voice-wave {
+  opacity: 0.25;
+  transition: opacity 0.15s;
+}
+
+.voice-toggle.active .voice-wave {
+  opacity: 1;
 }
 
 .pattern-wheel {
@@ -788,7 +846,7 @@
 }
 
 .wheel-scroll {
-  height: 120px;
+  height: clamp(78px, 12.5svh, 112px);
   width: 64px;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
@@ -836,17 +894,20 @@
   color: var(--text-muted);
 }
 
-/* Large Play Button */
+/* Large Play Button (with voice toggle to its left, spacer to its right) */
 .play-section-main {
   width: 100%;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 1rem;
+  gap: clamp(0.75rem, 4vw, 1.75rem);
+  padding: clamp(0.3rem, 1svh, 0.7rem);
 }
 
 .play-btn-large {
-  width:  clamp(120px, 40vw, 160px);
-  height: clamp(120px, 40vw, 160px);
+  /* Scale with both width and height so it shrinks on short screens too. */
+  width:  clamp(94px, min(38vw, 19.5svh), 150px);
+  height: clamp(94px, min(38vw, 19.5svh), 150px);
   border-radius: 50%;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.2);
@@ -1042,7 +1103,14 @@
   background: var(--bg-elevated);
   border-radius: 1.25rem 1.25rem 0 0;
   padding: 1.25rem 1rem 2rem;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
+  /* The subdivision grid (16 options) can be taller than the screen — cap the
+     sheet and let it scroll instead of overflowing off the bottom edge. */
+  max-height: 88dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .picker-title {
@@ -1206,7 +1274,7 @@
 /* Bar Info Overlay */
 .bar-info-overlay {
   position: fixed;
-  top: 1rem;
+  top: max(0.75rem, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Outfit', sans-serif;

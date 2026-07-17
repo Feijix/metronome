@@ -2,6 +2,7 @@ import { StateManager } from './core/StateManager.js';
 import { MetronomeAudio } from './core/MetronomeAudio.js';
 import { MetronomeScheduler } from './core/MetronomeScheduler.js';
 import { TapTempo } from './features/TapTempo.js';
+import { VoiceCounter } from './features/VoiceCounter.js';
 import { BPMDisplay } from './ui/BPMDisplay.js';
 import { BeatsVisualizer } from './ui/BeatsVisualizer.js';
 import { SubdivisionControl } from './ui/SubdivisionControl.js';
@@ -38,6 +39,7 @@ class GapMetronomeApp {
     this.audio.setSoundType(this.state.getSoundType()); // restore persisted choice
     this.scheduler = new MetronomeScheduler(this.state, this.audio);
     this.tapTempo = new TapTempo(this.state, this.audio);
+    this.voiceCounter = new VoiceCounter(this.state, this.audio);
   }
 
   initializeUI() {
@@ -66,6 +68,20 @@ class GapMetronomeApp {
     // Tap tempo button
     if (elements.tapTempo) {
       elements.tapTempo.addEventListener('click', () => this.tapTempo.handleTap());
+    }
+
+    // Spoken bar-count toggle (left of the Click wheel)
+    if (elements.voiceToggle) {
+      const syncVoiceBtn = () => {
+        const on = this.state.getVoiceCount();
+        elements.voiceToggle.classList.toggle('active', on);
+        elements.voiceToggle.setAttribute('aria-pressed', String(on));
+      };
+      elements.voiceToggle.addEventListener('click', () => {
+        this.state.setVoiceCount(!this.state.getVoiceCount());
+        syncVoiceBtn();
+      });
+      syncVoiceBtn();
     }
 
     // Prevent double-click zoom

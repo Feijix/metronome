@@ -1,60 +1,57 @@
-/* Responsive */
-@media (max-width: 480px) {
-  body {
-    padding: 0.5rem;
+/* Responsive — short-viewport compaction.
+   The main layout already scales fluidly via clamp()/svh; these height-based
+   steps trim the remaining fixed-size elements so everything stays on one
+   screen on smaller phones. The body scroll fallback (main.css) covers any
+   device too short for even these. */
+
+/* Narrow phones: tighten horizontal padding so wheels/dial don't crowd edges */
+@media (max-width: 360px) {
+  .bottom-controls {
+    gap: 1rem;
   }
 
-  .app {
-    gap: 0.75rem;
-    padding-bottom: 0.5rem;
+  .selector-btn {
+    width: 84px;
   }
 
-  .header {
-    padding-bottom: 0.25rem;
-  }
-
-  .header h1 {
-    font-size: 1.25rem;
-  }
-
-  .header p {
-    font-size: 0.7rem;
-  }
-
-  .bpm-section {
-    padding: 1rem;
-  }
-
-  .visualizer {
-    padding: 1rem;
-  }
-
-  .control-card {
-    padding: 0.75rem;
-  }
-
-  .play-section {
-    padding-bottom: 0;
-  }
-
-  .play-btn {
-    padding: 1rem;
+  .tap-tempo-main {
+    padding: 0 1.1rem;
   }
 }
 
-@media (max-width: 380px) {
-  .bpm-value {
-    font-size: 3rem;
-    min-width: 120px;
-  }
-
+/* Short screens: shrink the discrete fixed-height pieces not covered by clamp */
+@media (max-height: 660px) {
   .beat {
     width: 40px;
     height: 40px;
   }
 
-  .bpm-btn {
-    width: 40px;
-    height: 40px;
+  .bpm-value-large {
+    font-size: 3rem;
+  }
+
+  .tempo-name {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-height: 580px) {
+  .beat {
+    width: 34px;
+    height: 34px;
+  }
+
+  .selector-btn,
+  .tap-tempo-main {
+    height: 50px;
+  }
+
+  .bpm-value-large {
+    font-size: 2.6rem;
+  }
+
+  .wheel-label,
+  .bpm-label-small {
+    font-size: 0.62rem;
   }
 }

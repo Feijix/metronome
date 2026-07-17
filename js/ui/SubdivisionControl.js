@@ -14,6 +14,13 @@ export class SubdivisionControl {
     this.bindEvents();
     this.state.subscribe('subdivision', v => this.updateDisplay(v));
     this.updateDisplay(this.state.getSubdivision());
+
+    // The Bravura glyphs may not be loaded when the first images are rasterized;
+    // re-render once the font is ready so any fallback glyphs are replaced.
+    NoteRenderer.whenReady().then(() => {
+      this.render();
+      this.updateDisplay(this.state.getSubdivision());
+    });
   }
 
   render() {

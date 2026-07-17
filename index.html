@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Metronome</title>
   <meta name="description" content="Practice metronome with gap training for developing internal timing">
   <meta name="theme-color" content="#06b6d4">
@@ -46,8 +46,19 @@
       </div>
     </section>
 
-    <!-- Large play button (~40% screen width) -->
+    <!-- Large play button (~40% screen width), with the voice-count toggle to
+         its left. The spacer on the right balances it so play stays centered. -->
     <section class="play-section-main">
+      <div class="voice-control">
+        <div class="wheel-label">Voice</div>
+        <button class="voice-toggle" id="voice-toggle" aria-label="Count bars aloud" aria-pressed="false" title="Count bars aloud">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M4 9v6h4l5 5V4L8 9H4z"/>
+            <path class="voice-wave" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  d="M16.5 8.5a5 5 0 0 1 0 7M18.8 6a8 8 0 0 1 0 12"/>
+          </svg>
+        </button>
+      </div>
       <button class="play-btn-large" id="play-btn" aria-label="Start metronome">
         <svg class="play-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
           <polygon class="icon-play" points="30,18 82,50 30,82"
@@ -59,6 +70,7 @@
           </g>
         </svg>
       </button>
+      <div class="gap-section-spacer" aria-hidden="true"></div>
     </section>
 
     <!-- BPM rotary dial -->
@@ -136,7 +148,7 @@
         <div class="sound-grid" id="sound-grid">
           <button class="sound-option" data-sound="digital">Digital</button>
           <button class="sound-option" data-sound="mechanical">Mechanical</button>
-          <button class="sound-option" data-sound="drumstick">Drumstick</button>
+          <button class="sound-option" data-sound="clave">Clave</button>
           <button class="sound-option" data-sound="cowbell">Cowbell</button>
           <button class="sound-option" data-sound="block">Block</button>
           <button class="sound-option" data-sound="shaker">Shaker</button>

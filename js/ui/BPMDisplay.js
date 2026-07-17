@@ -26,8 +26,13 @@ export class BPMDisplay {
   }
 
   computeDialSize() {
-    // Scale with screen width; cap at 220px for larger phones
-    return Math.min(220, Math.floor(window.innerWidth * 0.57));
+    // Scale with screen width AND height so the dial shrinks on short screens;
+    // floor at 150px for legibility. Cap is 220px on phones but grows to 300px
+    // on tablets/large screens so the dial doesn't look tiny.
+    const byWidth  = window.innerWidth  * 0.57;
+    const byHeight = window.innerHeight * 0.28;
+    const cap = Math.min(window.innerWidth, window.innerHeight) >= 700 ? 300 : 220;
+    return Math.max(150, Math.min(cap, Math.floor(Math.min(byWidth, byHeight))));
   }
 
   initCanvas() {
