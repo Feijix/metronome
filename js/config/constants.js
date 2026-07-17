@@ -81,9 +81,10 @@ export const GAP_PATTERN_LIMITS = {
   GAP_DEFAULT: 2
 };
 
-// Sample-backed click sounds. Each plays the first transient of a CC0/PD
-// recording (see assets/sounds/CREDITS.md). `window` = seconds of the hit to
-// play; `levels` = per-accent gain + playbackRate (rate gives hi/lo pitch).
+// Click sounds (see assets/sounds/CREDITS.md). clave/cowbell are CC0/PD
+// recordings — SamplePlayer trims the first transient (`window` = seconds of
+// the hit). digital/mechanical/block/shaker are synthesized single events
+// played whole (trim:false). `levels` = per-accent gain + playbackRate.
 // Pitch scheme — a C-major triad, consonant to the ear:
 //   subdivision = C (root),  quarter = E (major third),  beat 1 = G (fifth).
 // `tune` places each sound's root C at the octave nearest its own natural

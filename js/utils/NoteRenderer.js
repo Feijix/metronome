@@ -9,7 +9,8 @@
 const GLYPH = {
   note:  String.fromCodePoint(0xE0A4), // noteheadBlack
   dot:   String.fromCodePoint(0xE1E7), // augmentationDot
-  rest:  { 1: String.fromCodePoint(0xE4E6),   // rest8th
+  rest:  { 0: String.fromCodePoint(0xE4E5),   // restQuarter
+           1: String.fromCodePoint(0xE4E6),   // rest8th
            2: String.fromCodePoint(0xE4E7),   // rest16th
            3: String.fromCodePoint(0xE4E8) }, // rest32nd
   flag:  { 1: String.fromCodePoint(0xE240),   // flag8thUp
@@ -123,7 +124,8 @@ export class NoteRenderer {
 
   rest(x, beams, beamY, baseY) {
     const midY = (beamY + baseY) / 2 + this.restG * 0.30;
-    this.glyph(GLYPH.rest[beams], this.snap(x), this.snap(midY), this.restG);
+    const glyph = GLYPH.rest[beams] || GLYPH.rest[2]; // fall back to 16th rest
+    this.glyph(glyph, this.snap(x), this.snap(midY), this.restG);
   }
 
   // A lone (un-beamable) note gets a flag hanging from the stem top. Sized to
@@ -177,31 +179,16 @@ export class NoteRenderer {
       }
     });
 
-    // Beaming. Never floats over a leading/trailing rest. A single lone note
-    // takes a flag. For an internal rest: the PRIMARY beam may span the whole
-    // group (keeps the beat grouped), but SECONDARY beams must not cross a rest
-    // — they only join consecutive sounding notes, and a note left isolated at a
-    // secondary level gets a fractional stub. (This is what 16r2/16r3 need.)
+    // Beaming for the simple groups compose() handles (full patterns, or ≤1
+    // beam): a single lone note takes a flag; otherwise draw `beamCount` beams
+    // across the sounding span. Gap-aware secondary stubs live in _beamNotes
+    // (used by _rhythmGroup for the 16r patterns).
     if (beamCount > 0) {
       if (sounding.length === 1) {
         this.flag(xs[sounding[0]], beamY, beamCount);
       } else if (sounding.length >= 2) {
-        const first = sounding[0], last = sounding[sounding.length - 1];
-        this.beamAt(this.stemXof(xs[first]), this.stemXof(xs[last]), beamY, 0); // primary
-        for (let level = 1; level < beamCount; level++) {
-          for (let r = 0; r < sounding.length; ) {
-            let s = r;
-            while (r + 1 < sounding.length && sounding[r + 1] === sounding[r] + 1) r++;
-            if (r > s) {
-              this.beamAt(this.stemXof(xs[sounding[s]]), this.stemXof(xs[sounding[r]]), beamY, level);
-            } else {
-              const idx = sounding[s];
-              const right = sounding.some(k => k > idx) && !sounding.some(k => k < idx);
-              this.beamStub(this.stemXof(xs[idx]), beamY, level, right);
-            }
-            r++;
-          }
-        }
+        this.beams(this.stemXof(xs[sounding[0]]),
+                   this.stemXof(xs[sounding[sounding.length - 1]]), beamY, beamCount);
       }
     }
     if (spec.triplet) {

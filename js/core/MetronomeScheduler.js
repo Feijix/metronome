@@ -91,15 +91,12 @@ export class MetronomeScheduler {
     const bar = runtime.barsInCurrentMode + 1;
     const barTotal = runtime.isGapMode ? config.gapBars : config.clickBars;
     const isGap = runtime.isGapMode;
-    // First tick of a bar (downbeat) — used to trigger the spoken bar count.
-    const isBarStart = runtime.currentBeat === 0 && runtime.currentSubBeat === 0;
     setTimeout(() => {
       this.state.notify('beatTick', {
         beat: runtime.currentBeat,
         isGap,
         bar,
-        barTotal,
-        isBarStart
+        barTotal
       });
       if (navigator.vibrate && this.state.getVibrate()) {
         if (clickType === 'downbeat')     navigator.vibrate(22);

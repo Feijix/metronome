@@ -91,11 +91,21 @@ export class VoiceCounter {
     const entry = this.buffers.get(n);
     if (!entry) { this._ensureLoaded(); return; } // not ready yet — next bar will speak
     if (this.current) { try { this.current.stop(); } catch (e) {} }
-    const at = Math.max((when || ctx.currentTime) - entry.preroll, ctx.currentTime);
+    // Start `preroll` early so the vowel (p-center) lands on `when`. If there
+    // isn't enough lead, skip that far into the buffer instead of just delaying
+    // the start — this keeps the vowel on the beat (only the fricative lead-in
+    // shortens), matching the shaker's alignment.
+    const w = when || ctx.currentTime;
+    let at = w - entry.preroll;
+    let off = entry.offset;
+    if (at < ctx.currentTime) {
+      off += ctx.currentTime - at; // playbackRate is 1, so buffer-seconds == wall-seconds
+      at = ctx.currentTime;
+    }
     const src = ctx.createBufferSource();
     src.buffer = entry.buffer;
     src.connect(ctx.destination);
-    src.start(at, entry.offset);
+    src.start(at, off);
     this.current = src;
   }
 }

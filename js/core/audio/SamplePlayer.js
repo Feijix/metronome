@@ -79,16 +79,25 @@ export class SamplePlayer {
       // any lead-in leads into the beat and the hit is on `time`.
       let startAt = t0 - this.preHit / rate;
       let bufOff  = 0; // seconds into the buffer to begin at
-      // If there isn't enough lead time to fit the whole lead-in, skip that far
-      // INTO the buffer instead of delaying the start — this keeps the hit
-      // exactly on `time` (only the lead-in shortens) so timing stays rock-solid.
+      // If there isn't enough lead time to fit the lead-in, skip INTO the buffer
+      // instead of delaying — this keeps the hit on `time` (only the lead-in
+      // shortens). Cap the skip at preHit so we never skip past the hit itself:
+      // preHit=0 sounds keep their attack (start at `now`, a touch late), and
+      // the shaker's hit is always played.
       if (startAt < ctx.currentTime) {
-        bufOff  = (ctx.currentTime - startAt) * rate;
+        bufOff  = Math.min((ctx.currentTime - startAt) * rate, this.preHit);
         startAt = ctx.currentTime;
       }
       const bufDur = (this.buffer.duration - bufOff) / rate;
-      g.gain.setValueAtTime(peak, startAt);
-      g.gain.setValueAtTime(peak, startAt + Math.max(0, bufDur - 0.015));
+      // Flat gain to preserve the transient; a 1.5ms fade-in only when starting
+      // mid-buffer (bufOff>0), where the sample isn't at zero, to avoid a click.
+      if (bufOff > 0) {
+        g.gain.setValueAtTime(0.0001, startAt);
+        g.gain.exponentialRampToValueAtTime(peak, startAt + 0.0015);
+      } else {
+        g.gain.setValueAtTime(peak, startAt);
+      }
+      g.gain.setValueAtTime(peak, startAt + Math.max(0.003, bufDur - 0.015));
       g.gain.exponentialRampToValueAtTime(0.0001, startAt + bufDur); // tail anti-click
       src.connect(g).connect(ctx.destination);
       src.start(startAt, bufOff);
