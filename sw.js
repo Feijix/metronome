@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gap-metronome-v55';
+const CACHE_NAME = 'gap-metronome-v57';
 const urlsToCache = [
   '/',
   '/index.html',
