@@ -6,10 +6,14 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const OUT  = path.join(ROOT, 'www');
 
+// Source-only folders that shouldn't ship inside the app bundle.
+const SKIP = new Set([path.join(ROOT, 'assets', 'app_icon')]);
+
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const s = path.join(src, entry.name);
+    if (SKIP.has(s)) continue;
     const d = path.join(dest, entry.name);
     entry.isDirectory() ? copyDir(s, d) : fs.copyFileSync(s, d);
   }
