@@ -13,6 +13,11 @@ export class SubdivisionControl {
     this.render();
     this.bindEvents();
     this.state.subscribe('subdivision', v => this.updateDisplay(v));
+    // Glyphs are drawn relative to the beat note (♪ beat in x/8, etc.).
+    this.state.subscribe('beatUnit', () => {
+      this.render();
+      this.updateDisplay(this.state.getSubdivision());
+    });
     this.updateDisplay(this.state.getSubdivision());
 
     // The Bravura glyphs may not be loaded when the first images are rasterized;
@@ -31,7 +36,7 @@ export class SubdivisionControl {
       btn.dataset.value = sub.id;
 
       const img = document.createElement('img');
-      img.src = this.noteRenderer.render(sub);
+      img.src = this.noteRenderer.render(sub, this.state.getBeatUnit());
       img.alt = sub.label;
       img.className = 'picker-opt-img';
 
@@ -69,7 +74,7 @@ export class SubdivisionControl {
   updateDisplay(value) {
     const sub = SUBDIVISIONS.find(s => s.id === value);
     if (this.valueEl && sub) {
-      const dataUrl = this.noteRenderer.render(sub);
+      const dataUrl = this.noteRenderer.render(sub, this.state.getBeatUnit());
       this.valueEl.innerHTML = `<img src="${dataUrl}" alt="${sub.label}" class="selector-note-img">`;
     }
     this.updateOptionHighlight(value);

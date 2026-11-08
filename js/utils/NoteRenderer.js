@@ -8,13 +8,21 @@
 // plain ASCII (raw private-use chars don't survive some editors).
 const GLYPH = {
   note:  String.fromCodePoint(0xE0A4), // noteheadBlack
+  half:  String.fromCodePoint(0xE0A3), // noteheadHalf
+  whole: String.fromCodePoint(0xE0A2), // noteheadWhole
   dot:   String.fromCodePoint(0xE1E7), // augmentationDot
-  rest:  { 0: String.fromCodePoint(0xE4E5),   // restQuarter
+  // Keyed by beam count: -2 whole, -1 half, 0 quarter, 1 8th, 2 16th, …
+  rest:  { '-2': String.fromCodePoint(0xE4E3), // restWhole
+           '-1': String.fromCodePoint(0xE4E4), // restHalf
+           0: String.fromCodePoint(0xE4E5),   // restQuarter
            1: String.fromCodePoint(0xE4E6),   // rest8th
            2: String.fromCodePoint(0xE4E7),   // rest16th
-           3: String.fromCodePoint(0xE4E8) }, // rest32nd
+           3: String.fromCodePoint(0xE4E8),   // rest32nd
+           4: String.fromCodePoint(0xE4E9) }, // rest64th
   flag:  { 1: String.fromCodePoint(0xE240),   // flag8thUp
-           2: String.fromCodePoint(0xE242) }, // flag16thUp
+           2: String.fromCodePoint(0xE242),   // flag16thUp
+           3: String.fromCodePoint(0xE244),   // flag32ndUp
+           4: String.fromCodePoint(0xE246) }, // flag64thUp
   tuplet: n => String.fromCodePoint(0xE880 + n), // tupletN numeral (0–9)
 };
 
@@ -35,6 +43,7 @@ export class NoteRenderer {
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
     this.color = '#ffffff';
+    this.shift = 0;      // beam offset for the beat unit (set per render)
 
     // ── Engraving geometry (px @ CSS 1×) ──
     this.H       = 44;   // shared canvas height — every symbol scales identically
@@ -80,7 +89,24 @@ export class NoteRenderer {
 
   stemXof(x) { return this.snap(x + this.headHalf - this.stemW / 2); }
 
-  head(x, y) { this.glyph(GLYPH.note, this.snap(x), this.snap(y), this.G); }
+  // Notehead for a note with `beams` beams: ≥0 black, -1 half, ≤-2 whole.
+  head(x, y, beams = 0) {
+    const g = beams >= 0 ? GLYPH.note : beams === -1 ? GLYPH.half : GLYPH.whole;
+    this.glyph(g, this.snap(x), this.snap(y), this.G);
+  }
+
+  // Note (head + stem; whole notes have no stem).
+  note(x, baseY, beamY, beams) {
+    this.head(x, baseY, beams);
+    if (beams >= -1) this.stem(x, baseY, beamY);
+  }
+
+  // Stem length so stacked beams (32nds, 64ths) still clear the noteheads.
+  stemFor(beams) {
+    return beams >= 4 ? this.stemLen32 + this.beamGap
+         : beams === 3 ? this.stemLen32
+         : this.stemLen;
+  }
 
   dot(x, y) {
     this.glyph(GLYPH.dot, this.snap(x + this.headHalf + 3), this.snap(y - 1), this.G);
@@ -156,13 +182,17 @@ export class NoteRenderer {
   // spec: { n, spacing, beams, pattern?, triplet?, stemLen?, rightPad? }
   compose(spec) {
     const { n, spacing } = spec;
-    const beamCount = spec.beams;
+    // Shift by the beat unit: in x/8 a "beat" is an eighth, so everything
+    // gets one more beam; in x/2 one fewer (quarters → halves), etc.
+    const beamCount = spec.beams + this.shift;
     const width = this.pad + (n - 1) * spacing + (spec.rightPad ?? this.pad);
     this.setup(width);
 
     const baseY = this.baseY;
-    const stemLen = spec.stemLen || this.stemLen;
-    const beamY = spec.triplet ? baseY - this.tStem : baseY - stemLen;
+    const stemLen = this.stemFor(beamCount);
+    const beamY = spec.triplet
+      ? baseY - this.tStem - Math.max(0, beamCount - 2) * this.beamGap
+      : baseY - stemLen;
 
     const xs = [];
     for (let i = 0; i < n; i++) xs.push(this.pad + i * spacing);
@@ -172,8 +202,7 @@ export class NoteRenderer {
     xs.forEach((x, i) => {
       if (!spec.pattern || spec.pattern[i]) {
         sounding.push(i);
-        this.head(x, baseY);
-        this.stem(x, baseY, beamY);   // every note here (quarter → 32nd) has a stem
+        this.note(x, baseY, beamY, beamCount);
       } else {
         this.rest(x, beamCount, beamY, baseY);
       }
@@ -202,8 +231,9 @@ export class NoteRenderer {
   // not 16th+rest+16th+16th. Only a LEADING silence (nothing to lengthen)
   // becomes a rest. Each note's beam count follows its duration.
   _rhythmGroup(pattern, n, spacing, maxBeams) {
+    maxBeams += this.shift; // beat-unit shift (see compose)
     this.setup(this.pad + (n - 1) * spacing + this.pad);
-    const baseY = this.baseY, beamY = baseY - this.stemLen;
+    const baseY = this.baseY, beamY = baseY - this.stemFor(maxBeams);
     const xs = [];
     for (let i = 0; i < n; i++) xs.push(this.pad + i * spacing);
 
@@ -221,9 +251,8 @@ export class NoteRenderer {
     });
 
     notes.forEach(nt => {
-      this.head(xs[nt.pos], baseY);
-      this.stem(xs[nt.pos], baseY, beamY);
-      if (nt.dur === 3) this.dot(xs[nt.pos], baseY); // dotted eighth
+      this.note(xs[nt.pos], baseY, beamY, nt.beams);
+      if (nt.dur === 3) this.dot(xs[nt.pos], baseY); // dotted (e.g. dotted eighth)
     });
 
     this._beamNotes(notes, xs, beamY);
@@ -233,7 +262,7 @@ export class NoteRenderer {
   // Beam count for a note of `dur` sixteenth-slots: 1→16th(2 beams), 2→8th(1),
   // 3→dotted-8th(1), 4→quarter(0).
   _beamsForDur(dur, maxBeams) {
-    return Math.max(0, maxBeams - Math.floor(Math.log2(dur)));
+    return Math.max(-2, maxBeams - Math.floor(Math.log2(dur)));
   }
 
   // Beam a sequence of notes (each with a `beams` count). The primary beam spans
@@ -261,7 +290,10 @@ export class NoteRenderer {
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-  render(sub) {
+  // beatUnit: the time-signature denominator. Symbols are drawn relative to
+  // the beat note — e.g. the plain beat is ♩ in x/4 but ♪ in x/8.
+  render(sub, beatUnit = 4) {
+    this.shift = Math.round(Math.log2(beatUnit / 4)) || 0;
     switch (sub.id) {
       case 'q':    return this.compose({ n: 1, spacing: 0,  beams: 0 });
       case '8':    return this.compose({ n: 2, spacing: 16, beams: 1 });
@@ -269,8 +301,8 @@ export class NoteRenderer {
       case '8t':   return this.compose({ n: 3, spacing: 15, beams: 1, triplet: true });
       case '16':   return this.compose({ n: 4, spacing: 12, beams: 2 });
       case '16t':  return this.compose({ n: 6, spacing: 11, beams: 2, triplet: true, tupletN: 6 });
-      case '32':   return this.compose({ n: 8, spacing: 9,  beams: 3, stemLen: this.stemLen32 });
-      case 'd8':   return this._dottedEighth();
+      case '32':   return this.compose({ n: 8, spacing: 9,  beams: 3 });
+      case 'd8':   return this._rhythmGroup([true, false, false, true], 4, 8, 2);
       case '16r1': return this._rhythmGroup([false, true, true, true], 4, 12, 2);
       case '16r2': return this._rhythmGroup([true, false, true, true], 4, 12, 2);
       case '16r3': return this._rhythmGroup([true, true, false, true], 4, 12, 2);
@@ -282,22 +314,5 @@ export class NoteRenderer {
       case '8tr12': return this.compose({ n: 3, spacing: 15, beams: 1, triplet: true, pattern: [false, false, true] });
       default:     return this.compose({ n: 1, spacing: 0, beams: 0 });
     }
-  }
-
-  // Dotted 8th + 16th: a dotted eighth beamed to a sixteenth, with the
-  // secondary (16th) beam as a short right-hand stub.
-  _dottedEighth() {
-    const spacing = 22;
-    this.setup(this.pad + spacing + this.pad + 6);
-    const baseY = this.baseY, beamY = baseY - this.stemLen;
-    const x0 = this.pad, x1 = this.pad + spacing;
-    this.head(x0, baseY); this.stem(x0, baseY, beamY);
-    this.head(x1, baseY); this.stem(x1, baseY, beamY);
-    this.dot(x0, baseY);
-    // primary beam full width
-    this.beams(this.stemXof(x0), this.stemXof(x1), beamY, 1);
-    // secondary 16th beam: short stub on the left of the second note
-    this.beams(this.stemXof(x1) - 7, this.stemXof(x1), beamY + this.beamGap, 1);
-    return this.canvas.toDataURL();
   }
 }

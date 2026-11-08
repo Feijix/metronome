@@ -92,8 +92,8 @@ export class StateManager {
     return this.config.timeSignature;
   }
 
-  // Time signature denominator (beat note value). Label-only — does not affect
-  // click timing. Must be one of TIME_SIG.DENOMINATORS.
+  // Time signature denominator (beat note value). Sets the beat length relative
+  // to the quarter-note BPM (see beatSeconds). Must be one of TIME_SIG.DENOMINATORS.
   setBeatUnit(value) {
     if (TIME_SIG.DENOMINATORS.includes(value) && this.config.beatUnit !== value) {
       this.config.beatUnit = value;

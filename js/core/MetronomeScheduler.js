@@ -1,4 +1,4 @@
-import { SCHEDULING_CONSTANTS } from '../config/constants.js';
+import { SCHEDULING_CONSTANTS, beatSeconds, beatGroupSize } from '../config/constants.js';
 
 export class MetronomeScheduler {
   constructor(stateManager, audioEngine) {
@@ -52,7 +52,9 @@ export class MetronomeScheduler {
     const { config, runtime } = stateData;
     const subDef = this.state.getSubdivisionDef();
 
-    const secondsPerBeat = 60.0 / config.bpm;
+    // BPM counts quarter notes; the time-signature denominator scales the beat
+    // (x/8 → eighth-note beats, x/2 → half-note beats, …).
+    const secondsPerBeat = beatSeconds(config.bpm, config.beatUnit);
     const secondsPerSubBeat = secondsPerBeat / subDef.resolution;
 
     // Play sound if not in gap mode, this tick is active in the pattern, and
@@ -92,7 +94,10 @@ export class MetronomeScheduler {
 
   determineClickType(config, runtime) {
     const isDownbeat = runtime.currentBeat === 0 && runtime.currentSubBeat === 0;
-    const isQuarterBeat = runtime.currentSubBeat === 0;
+    // "Beat" accent: the first tick of each beat — or, in compound meters
+    // (6/8, 9/8, 12/8…), only the first eighth of each dotted-quarter group.
+    const group = beatGroupSize(config.timeSignature, config.beatUnit);
+    const isQuarterBeat = runtime.currentSubBeat === 0 && runtime.currentBeat % group === 0;
 
     if (isDownbeat && config.accentOne) {
       return 'downbeat';

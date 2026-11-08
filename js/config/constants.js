@@ -43,8 +43,9 @@ export const SCHEDULING_CONSTANTS = {
 };
 
 // Time signature: numerator (beats per bar) is a free range; denominator
-// (beat note value) is a fixed set. Denominator is label-only — the numerator
-// drives the beat count and BPM is the beat rate.
+// (beat note value) is a fixed set. BPM always counts QUARTER notes; the
+// denominator sets how long each beat is relative to that quarter (see
+// beatSeconds). So 12/8 at ♩=90 plays 12 eighth-note beats per bar.
 export const TIME_SIG = {
   NUM_MIN: 1,
   NUM_MAX: 16,
@@ -52,6 +53,20 @@ export const TIME_SIG = {
   DEFAULT_NUM: 4,
   DEFAULT_DEN: 4,
 };
+
+/** Duration of one beat (one denominator note) in seconds at a quarter-note BPM. */
+export function beatSeconds(bpm, beatUnit = 4) {
+  return (60 / bpm) * (4 / beatUnit);
+}
+
+/**
+ * Beats per accent group. Compound meters (6/8, 9/8, 12/8, 15/8) are felt in
+ * dotted-quarter pulses, so the "beat" accent falls on every 3rd eighth.
+ * Everything else accents every beat.
+ */
+export function beatGroupSize(numerator, beatUnit) {
+  return beatUnit === 8 && numerator >= 6 && numerator % 3 === 0 ? 3 : 1;
+}
 
 // Subdivisions: each entry defines a rhythmic pattern within one beat.
 // resolution = ticks per beat (grid); pattern = which ticks produce a sound.

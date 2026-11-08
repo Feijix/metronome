@@ -3,7 +3,8 @@ import { TIME_SIG } from '../config/constants.js';
 /**
  * TimeSignatureWheel — a bottom-sheet editor with two sliders: the numerator
  * (beats per bar, 1–16) and the denominator (beat note value: 1/2/4/8). The
- * denominator is label-only and does not affect click timing.
+ * denominator sets the beat's note value: BPM counts quarter notes, so x/8
+ * beats are half as long and x/2 beats twice as long.
  */
 export class TimeSignatureWheel {
   constructor(stateManager, elements) {
