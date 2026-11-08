@@ -21,6 +21,15 @@ export class MetronomeAudio {
     this._ensurePlayer(this.soundType);
   }
 
+  // Resume the context if the OS suspended/interrupted it (e.g. while the
+  // app was in the background).
+  resume() {
+    const ctx = this.audioContext;
+    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed' && ctx.resume) {
+      ctx.resume().catch(() => {});
+    }
+  }
+
   setSoundType(type) {
     if (SAMPLE_CONFIG[type]) this.soundType = type;
     if (this.audioContext) this._ensurePlayer(this.soundType);

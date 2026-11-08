@@ -6,6 +6,14 @@ export class MetronomeScheduler {
     this.audio = audioEngine;
     this.schedulerInterval = null;
     this.nextNoteTime = 0;
+
+    // Going to the background (screen off): immediately top the queue up to
+    // the larger hidden lookahead before the browser starts throttling timers.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (this.isPlaying()) this.scheduler();
+      });
+    }
   }
 
   start() {
@@ -30,7 +38,11 @@ export class MetronomeScheduler {
   }
 
   scheduler() {
-    while (this.nextNoteTime < this.audio.currentTime + SCHEDULING_CONSTANTS.SCHEDULE_AHEAD_TIME) {
+    const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const ahead = hidden
+      ? SCHEDULING_CONSTANTS.HIDDEN_SCHEDULE_AHEAD_TIME
+      : SCHEDULING_CONSTANTS.SCHEDULE_AHEAD_TIME;
+    while (this.nextNoteTime < this.audio.currentTime + ahead) {
       this.scheduleNote();
     }
   }
@@ -45,8 +57,13 @@ export class MetronomeScheduler {
 
     // Play sound if not in gap mode, this tick is active in the pattern, and
     // the current beat hasn't been muted by the user.
+    // If the scheduler was stalled (page frozen in the background), notes that
+    // are already in the past are skipped so they don't all fire at once; the
+    // position still advances so the bar/beat grid stays intact.
+    const late = this.nextNoteTime < this.audio.currentTime - SCHEDULING_CONSTANTS.LATE_NOTE_TOLERANCE;
+
     let clickType = null;
-    if (!runtime.isGapMode
+    if (!late && !runtime.isGapMode
         && subDef.pattern[runtime.currentSubBeat]
         && !this.state.isBeatMuted(runtime.currentBeat)) {
       clickType = this.determineClickType(config, runtime);
@@ -56,7 +73,7 @@ export class MetronomeScheduler {
     // Announce the start of a Click bar at its exact audio time so the spoken
     // count can be scheduled sample-accurately (not via the setTimeout visual
     // path, which jitters and lagged behind the beat).
-    if (!runtime.isGapMode && runtime.currentBeat === 0 && runtime.currentSubBeat === 0) {
+    if (!late && !runtime.isGapMode && runtime.currentBeat === 0 && runtime.currentSubBeat === 0) {
       this.state.notify('barAudioStart', {
         bar: runtime.barsInCurrentMode + 1,
         time: this.nextNoteTime
@@ -64,7 +81,7 @@ export class MetronomeScheduler {
     }
 
     // Schedule visual update with proper timing
-    this.scheduleVisualUpdate(runtime, config, clickType);
+    if (!late) this.scheduleVisualUpdate(runtime, config, clickType);
 
     // Advance time
     this.nextNoteTime += secondsPerSubBeat;

@@ -34,6 +34,9 @@ export class SettingsPanel {
     this.updateAccentQuarters(this.state.getAccentQuarters());
     this.updateFlashToggle(this.state.getFlashOnChange());
     this.updateWakeLockToggle(this.state.getKeepAwake());
+    // Re-apply a persisted "Keep screen awake" choice on startup — previously
+    // it was only applied when the toggle was clicked.
+    if (this.state.getKeepAwake()) this.wakeLock.request();
   }
 
   /**

@@ -32,6 +32,12 @@ export const BPM_CONSTANTS = {
 // Scheduling precision constants
 export const SCHEDULING_CONSTANTS = {
   SCHEDULE_AHEAD_TIME: 0.1,
+  // When the page is hidden (screen off / app in background) timers get
+  // throttled to ~1/s, so schedule further ahead to avoid audible gaps.
+  HIDDEN_SCHEDULE_AHEAD_TIME: 1.5,
+  // Notes whose time has already passed by more than this (e.g. after the
+  // page was frozen) are skipped silently instead of played as a burst.
+  LATE_NOTE_TOLERANCE: 0.05,
   LOOKAHEAD_MS: 25,
   INITIAL_DELAY: 0.05
 };

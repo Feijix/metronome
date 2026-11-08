@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gap-metronome-v57';
+const CACHE_NAME = 'gap-metronome-v58';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -50,6 +50,7 @@ const urlsToCache = [
   '/js/utils/NoteRenderer.js',
   '/js/utils/ThemeManager.js',
   '/js/utils/WakeLockManager.js',
+  '/js/utils/NativeBridge.js',
   '/js/utils/PresetManager.js'
 ];
 

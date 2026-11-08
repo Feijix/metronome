@@ -14,6 +14,7 @@ import { ScreenFlash } from './ui/ScreenFlash.js';
 import { PWAInstaller } from './utils/PWAInstaller.js';
 import { DOMHelpers } from './utils/DOMHelpers.js';
 import { PresetManager } from './utils/PresetManager.js';
+import { NativeBridge } from './utils/NativeBridge.js';
 
 class GapMetronomeApp {
   constructor() {
@@ -22,6 +23,23 @@ class GapMetronomeApp {
     this.initializePWA();
     this.setupKeyboardShortcuts();
     this.setupAudioWarmup();
+    this.setupBackgroundPlayback();
+  }
+
+  // Keep the metronome running with the screen off. On Android a
+  // media-playback foreground service (started while playing) keeps the
+  // process and audio alive; on return to the foreground make sure the
+  // AudioContext is running again.
+  setupBackgroundPlayback() {
+    this.state.subscribe('playState', (playing) => {
+      NativeBridge.call(playing ? 'startPlayback' : 'stopPlayback');
+      if (playing) this.audio.resume();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.scheduler.isPlaying()) {
+        this.audio.resume();
+      }
+    });
   }
 
   // Warm up the audio engine (create context + decode the current sample) on
