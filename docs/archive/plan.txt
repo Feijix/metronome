@@ -1,0 +1,439 @@
+Gap Metronome Refactor - Implementation Plan
+
+ Overview
+
+ Transform the Gap Metronome app into a mobile-first, GapClick-inspired design with enhanced audio synthesis, expanded subdivisions, and a comprehensive settings system.
+
+ Key Changes Summary
+
+ - Layout: Large central play button (~40% width), gradient background (green→blue), mobile-first design
+ - Subdivisions: Expand from [1,2,4] to [1,2,3,4,6,8,12] with musical symbol notation
+ - Audio: 7 synthesized sounds (Clave, Digital, Rimshot, Agogo, Hi-hat, Kick, Cowbell)
+ - Settings: Slide-up panel with sound selector, accents, flash toggle, wake lock, and presets
+ - Bar Range: Limit Click/Gap bars from 1-16 to 1-8
+
+ ---
+ Implementation Phases
+
+ PHASE 1: Foundation - Constants & State
+
+ Goal: Update configuration without breaking existing functionality
+
+ Changes:
+ 1. constants.js:
+   - Update SUBDIVISIONS: [1, 2, 3, 4, 6, 8, 12]
+   - Add SUBDIVISION_SYMBOLS mapping: {1: '♩', 2: '♪♪', 3: '♪♪♪', 4: '𝅘𝅥𝅯',
+   - Add SOUND_TYPES: ['clave', 'digital', 'rimshot', 'agogo', 'hihat', 'kick', 'cowbell']
+   - Update GAP_PATTERN_LIMITS: CLICK_MAX: 8, GAP_MAX: 8 (down from 16)
+   - Add to DEFAULT_STATE: soundType: 'clave', flashOnChange: false, keepAwake: false
+ 2. StateManager.js:
+   - Add methods: setSoundType(), getSoundType(), setFlashOnChange(), getFlashOnChange(), setKeepAwake(), getKeepAwake()
+   - Each with validation and observer notifications
+
+ Testing: Run existing tests, update test expectations for new subdivision values
+
+ ---
+ PHASE 2: Audio Synthesis System
+
+ Goal: Implement 7 synthesized sounds using Web Audio API
+
+ New Files:
+ - js/core/audio/SoundFactory.js - Factory pattern for sound selection
+ - js/core/audio/synthesizers/ClaveSynthesizer.js - Wood block (dual oscillator)
+ - js/core/audio/synthesizers/DigitalSynthesizer.js - Sharp sine beep
+ - js/core/audio/synthesizers/RimshotSynthesizer.js - Noise burst + tone
+ - js/core/audio/synthesizers/AgogoSynthesizer.js - Two-tone FM synthesis
+ - js/core/audio/synthesizers/HiHatSynthesizer.js - High-pass filtered noise
+ - js/core/audio/synthesizers/KickSynthesizer.js - Low sine sweep + click
+ - js/core/audio/synthesizers/CowbellSynthesizer.js - Metallic FM synthesis
+
+ Synthesizer Interface:
+ Each synthesizer must implement:
+ - playAccent(startTime) - Beat 1 sound (highest volume/frequency)
+ - playQuarter(startTime) - Quarter beat sound (medium)
+ - playSubdivision(startTime) - Subdivision sound (lowest)
+
+ MetronomeAudio.js Refactor:
+ - Add setSoundType(type) method
+ - Use SoundFactory.createSynthesizer(soundType, audioContext)
+ - Update playClick() to delegate to current synthesizer
+ - Remove old createAndPlayOscillator() and getClickParameters()
+
+ Sound Design Specs:
+ - Clave: Dual osc (800Hz+1200Hz accent), single tone (quarter/sub)
+ - Digital: Pure sine (1400/1100/900Hz), sharp attack/decay
+ - Rimshot: White noise burst + low tone (200/180/160Hz)
+ - Agogo: FM synthesis (carrier 880/740/620Hz, ratio 3.2)
+ - Hi-hat: High-pass filtered noise (5-7kHz cutoff)
+ - Kick: Low sine sweep (60→40Hz) + click transient
+ - Cowbell: FM dual carrier (540+800Hz accent, ratio 5.1)
+
+ Testing: Manual test page with buttons for each sound, verify timing precision
+
+ ---
+ PHASE 3: Settings Panel Infrastructure
+
+ Goal: Build slide-up settings panel with all new controls
+
+ New Files:
+ - js/ui/SettingsPanel.js - Settings panel component
+ - js/utils/WakeLockManager.js - Wake Lock API wrapper with fallbacks
+
+ HTML Additions (in index.html):
+ <div class="settings-backdrop" id="settings-backdrop"></div>
+ <div class="settings-panel" id="settings-panel">
+   <!-- Sound selector (7 options in 2-column grid) -->
+   <!-- Accent toggles (moved from inline) -->
+   <!-- Flash on pattern change toggle -->
+   <!-- Keep screen awake toggle -->
+   <!-- Preset management (moved from inline) -->
+ </div>
+ <button class="settings-icon" id="settings-icon">⚙</button>
+
+ CSS (in components.css):
+ - .settings-panel: Fixed bottom, slide-up animation, max-height 80vh
+ - .settings-backdrop: Full-screen overlay with blur
+ - .sound-grid: 2-column grid for sound options
+ - .settings-toggle-row: Flex row for toggle switches
+
+ SettingsPanel.js Features:
+ - Open/close with slide animation
+ - Sound selection updates state and audio engine
+ - Accent toggles (same logic as before, now in settings)
+ - Flash toggle (controls screen flash on mode change)
+ - Wake lock toggle (requests/releases wake lock)
+ - Preset save/load (move PresetManager here)
+
+ WakeLockManager.js:
+ - Feature detection: 'wakeLock' in navigator
+ - request(): Acquire screen wake lock
+ - release(): Release wake lock
+ - Handle errors gracefully (not all browsers support)
+
+ Integration:
+ - Add settings icon to header (top-right, fixed position)
+ - Initialize SettingsPanel in app.js
+ - Remove inline accent toggles from main UI
+
+ ---
+ PHASE 4: Layout Redesign
+
+ Goal: Implement GapClick-inspired mobile-first layout with gradient background
+
+ Complete HTML Restructure (index.html):
+ <body>
+   <div class="app">
+     <!-- Settings icon (top-right, fixed) -->
+     <button class="settings-icon">⚙</button>
+
+     <!-- Beat visualizer (top, smaller, subtle) -->
+     <section class="visualizer-top">
+       <div class="beats-container"></div>
+     </section>
+
+     <!-- Click/Gap bar selectors (vertical scroll wheels) -->
+     <section class="gap-pattern-section">
+       <div class="pattern-wheel"> <!-- Click 1-8 -->
+       <div class="pattern-wheel"> <!-- Gap 0-8 -->
+     </section>
+
+     <!-- Large play button (~40% screen width) -->
+     <section class="play-section-main">
+       <button class="play-btn-large">▶</button>
+     </section>
+
+     <!-- BPM controls (horizontal row) -->
+     <section class="bpm-section-main">
+       <button class="bpm-btn-large">−</button>
+       <div class="bpm-display-large">120 BPM</div>
+       <button class="bpm-btn-large">+</button>
+     </section>
+
+     <!-- Bottom controls (time sig, TAP, subdivisions) -->
+     <section class="bottom-controls">
+       <div class="time-sig-control">
+       <button class="tap-tempo-main">TAP</button>
+       <div class="subdivision-control">
+     </section>
+
+     <!-- Bar info overlay (subtle, top-center) -->
+     <div class="bar-info-overlay">CLICK — Bar 1 of 4</div>
+   </div>
+ </body>
+
+ CSS Overhaul:
+
+ main.css - Gradient & Mobile-First:
+ :root {
+   --gradient-start: #10b981; /* Green */
+   --gradient-end: #3b82f6;   /* Blue */
+   --text-primary: #ffffff;
+   --border: rgba(255, 255, 255, 0.1);
+   --accent: #fbbf24; /* Amber */
+ }
+
+ body {
+   background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+   background-attachment: fixed;
+   min-height: 100vh;
+ }
+
+ .app {
+   max-width: 420px;
+   min-height: 100vh;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 2rem;
+ }
+
+ components.css - New Component Styles:
+ - .play-btn-large: 160x160px circle, glassmorphism effect
+ - .bpm-display-large: 3.5rem font size, monospace
+ - .pattern-wheel: Vertical scroll, snap-scroll enabled, 120px height
+ - .wheel-option: Scroll-snap items, selected state scales up
+ - .subdivision-grid: 4-column grid for 7 subdivisions
+ - .bar-info-overlay: Fixed top-center, subtle background blur
+
+ manifest.json: Update theme_color and background_color to #10b981
+
+ Key Layout Changes:
+ 1. Play button dominant (largest element)
+ 2. BPM below play button (easy thumb reach)
+ 3. Visualizer at top (non-intrusive)
+ 4. Scroll wheels for gap pattern (intuitive touch interaction)
+ 5. Time sig & subdivisions at bottom
+
+ DOMHelpers.js: Update element selectors for new IDs/structure
+
+ ---
+ PHASE 5: Subdivision Expansion & UI Updates
+
+ Goal: Implement all 7 subdivisions with musical symbol notation
+
+ New Components:
+
+ SubdivisionControl.js:
+ - Renders subdivision grid using SUBDIVISION_SYMBOLS
+ - Creates pills dynamically: <button data-sub="1">♩</button>
+ - Handles click events to update state
+ - Subscribes to state changes to update active pill
+
+ GapPatternWheel.js:
+ - Implements vertical scroll wheel for Click/Gap bars
+ - Renders options 1-8 (or 0-8 for gap)
+ - Scroll-snap behavior: centers on selected value
+ - Updates state on scroll end (finds closest centered option)
+ - Two instances: one for click bars, one for gap bars
+
+ ControlPanel.js Updates:
+ - Remove subdivision pill handling (now in SubdivisionControl)
+ - Remove gap pattern +/- buttons (now in GapPatternWheel)
+ - Keep only time signature logic
+
+ app.js Initialization:
+ this.subdivisionControl = new SubdivisionControl(
+   this.state,
+   elements.subdivisionGrid
+ );
+
+ this.clickWheel = new GapPatternWheel(
+   this.state,
+   elements.clickWheel,
+   null,
+   'click'
+ );
+
+ this.gapWheel = new GapPatternWheel(
+   this.state,
+   null,
+   elements.gapWheel,
+   'gap'
+ );
+
+ Testing:
+ - Verify all 7 subdivision symbols render correctly
+ - Test that each subdivision affects metronome timing
+ - Verify scroll wheel snaps to selected value
+ - Test wheel scrolling on touch devices
+
+ ---
+ PHASE 6: Feature Integration
+
+ Goal: Implement screen flash and update preset system
+
+ New Files:
+ - js/ui/ScreenFlash.js - Screen flash effect on mode change
+
+ ScreenFlash.js:
+ - Creates full-screen overlay element
+ - Subscribes to 'modeSwitch' event
+ - Flashes blue (gap mode) or amber (click mode) for 200ms
+ - Only flashes if state.getFlashOnChange() is true
+
+ CSS Addition:
+ .screen-flash {
+   position: fixed;
+   inset: 0;
+   pointer-events: none;
+   opacity: 0;
+   transition: opacity 0.1s ease-out;
+   z-index: 9999;
+ }
+
+ .screen-flash.active {
+   opacity: 1;
+ }
+
+ PresetManager.js Updates:
+ - Update savePreset() to include new state properties
+ - Update loadPreset() with fallbacks for old presets:
+ soundType: stateData.config.soundType || 'clave',
+ flashOnChange: stateData.config.flashOnChange || false,
+ keepAwake: stateData.config.keepAwake || false
+ - Wire preset controls in SettingsPanel (save/load buttons)
+
+ Integration:
+ - Initialize ScreenFlash in app.js
+ - Move preset UI from inline to settings panel
+ - Update SettingsPanel to manage presets
+
+ ---
+ PHASE 7: Testing, Polish & Documentation
+
+ Goal: Comprehensive testing and production readiness
+
+ Test Updates:
+ 1. constants.test.js: Update for new subdivisions, bar limits, sound types
+ 2. state-manager.test.js: Add tests for new state methods
+ 3. audio-synthesis.test.js: New test file for synthesizer validation
+ 4. integration.test.js: Update element selectors for new UI
+
+ Service Worker:
+ - Update cache version to v2.0.0
+ - Add all new files to ASSETS_TO_CACHE
+
+ Performance Optimization:
+ - Lazy-load synthesizers (only create when sound type changes)
+ - Debounce wheel scroll events (150ms)
+ - Use CSS transforms for animations (GPU acceleration)
+ - Optimize beat visualizer with requestAnimationFrame
+
+ Accessibility:
+ - ARIA labels for all controls
+ - Keyboard navigation in settings panel
+ - Focus trap in modal
+ - Screen reader announcements for state changes
+
+ Testing Checklist:
+ - All unit tests pass
+ - All integration tests pass
+ - Test on iPhone Safari
+ - Test on Android Chrome
+ - Test on desktop (Chrome, Firefox, Safari)
+ - Lighthouse score > 90 (all categories)
+ - PWA installs correctly
+ - Offline mode works
+ - All 7 sounds play correctly
+ - All 7 subdivisions work
+ - Settings panel functionality
+ - Preset save/load with backward compatibility
+ - Screen flash toggle
+ - Wake lock (on supported browsers)
+ - Scroll wheel snap behavior
+ - Touch interactions smooth
+ - Keyboard shortcuts work
+ - Gap bars = 0 works correctly
+
+ ---
+ Critical Files
+
+ Core Files to Modify:
+
+ 1. C:\Dev\metronome\js\config\constants.js - Foundation for all changes
+ 2. C:\Dev\metronome\js\core\StateManager.js - New state properties
+ 3. C:\Dev\metronome\js\core\MetronomeAudio.js - Audio system refactor
+ 4. C:\Dev\metronome\index.html - Complete layout restructure
+ 5. C:\Dev\metronome\css\main.css - Gradient theme
+ 6. C:\Dev\metronome\css\components.css - All component styles
+ 7. C:\Dev\metronome\js\app.js - Initialize new components
+
+ New Files to Create:
+
+ - js/core/audio/SoundFactory.js
+ - js/core/audio/synthesizers/ (7 synthesizer classes)
+ - js/ui/SettingsPanel.js
+ - js/ui/SubdivisionControl.js
+ - js/ui/GapPatternWheel.js
+ - js/ui/ScreenFlash.js
+ - js/utils/WakeLockManager.js
+ - tests/unit/audio-synthesis.test.js
+
+ ---
+ Implementation Order
+
+ Recommended sequence:
+ 1. Phase 1 (Foundation) - Low risk, enables all other phases
+ 2. Phase 2 (Audio) - Independent, can test in isolation
+ 3. Phase 3 (Settings Panel) - Builds infrastructure for Phase 6
+ 4. Phase 4 (Layout) - MAJOR CHANGE - Mid-refactor allows testing with new UI
+ 5. Phase 5 (Subdivisions) - Depends on Phase 4 HTML structure
+ 6. Phase 6 (Features) - Integrates all previous work
+ 7. Phase 7 (Testing) - Final verification and polish
+
+ Estimated Effort: 42-62 hours (1-1.5 weeks full-time)
+
+ ---
+ Backward Compatibility
+
+ Old Presets:
+
+ - DEFAULT_STATE provides defaults for new properties
+ - PresetManager.loadPreset() uses fallbacks: soundType: 'clave', flashOnChange: false, keepAwake: false
+ - Old presets load correctly with default values
+
+ Existing Tests:
+
+ - Update assertions for new SUBDIVISIONS array [1,2,3,4,6,8,12]
+ - Update GAP_PATTERN_LIMITS max values (16→8)
+ - Add tests for new state properties and audio synthesis
+
+ PWA:
+
+ - Service worker version bump forces cache refresh
+ - Existing offline installations update on next online visit
+
+ ---
+ Risk Mitigation
+
+ High Risk:
+
+ - Audio Synthesis (complex, timing-critical)
+   - ✓ Start with simplest sounds (Clave, Digital)
+   - ✓ Extensive manual testing with metronome reference
+ - Layout Redesign (breaking changes to entire UI)
+   - ✓ Backup old HTML/CSS before changes
+   - ✓ Incremental testing (one section at a time)
+   - ✓ Visual regression screenshots
+
+ Medium Risk:
+
+ - Browser Compatibility (Wake Lock API, scroll snap)
+   - ✓ Feature detection with graceful fallbacks
+   - ✓ Test on iOS Safari, Android Chrome, desktop browsers
+
+ Low Risk:
+
+ - State Management (new properties)
+   - ✓ Validation in setters, defaults in loadPreset
+   - ✓ Thorough unit testing
+
+ ---
+ Notes
+
+ - Musical symbols may render differently across fonts/browsers - test extensively
+ - Wake Lock API only works on HTTPS (development exception for localhost)
+ - Scroll snap CSS may need vendor prefixes for older browsers
+ - Large synthesizer files increase initial bundle size - consider code splitting in future
+ - Keep sw.js cache list updated as files are added

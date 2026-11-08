@@ -1,3 +1,10 @@
 .aider*
 node_modules/
 www/
+
+# Claude Code worktrees / local state
+.claude/
+
+# Android Studio per-machine device selection
+android/.idea/deploymentTargetSelector.xml
+android/.idea/deviceManager.xml
