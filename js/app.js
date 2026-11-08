@@ -26,15 +26,35 @@ class GapMetronomeApp {
     this.setupBackgroundPlayback();
   }
 
-  // Keep the metronome running with the screen off. On Android a
-  // media-playback foreground service (started while playing) keeps the
-  // process and audio alive; on return to the foreground make sure the
-  // AudioContext is running again.
+  // Keep the metronome running with the screen off, and mirror play/pause +
+  // tempo into the Android notification. The native side (foreground service
+  // started while playing) keeps the process and audio alive; its Play/Pause
+  // buttons come back here as "metronome:play" / "metronome:pause" events.
   setupBackgroundPlayback() {
+    const report = () => NativeBridge.call('setPlaybackState', {
+      playing: this.scheduler.isPlaying(),
+      bpm: this.state.getBPM()
+    });
+
     this.state.subscribe('playState', (playing) => {
-      NativeBridge.call(playing ? 'startPlayback' : 'stopPlayback');
+      clearTimeout(this._bpmReportTimer);
+      report();
       if (playing) this.audio.resume();
     });
+    // Tempo dial fires rapidly; Android rate-limits notification updates.
+    this.state.subscribe('bpm', () => {
+      if (!this.scheduler.isPlaying()) return;
+      clearTimeout(this._bpmReportTimer);
+      this._bpmReportTimer = setTimeout(report, 300);
+    });
+
+    window.addEventListener('metronome:play', () => {
+      if (!this.scheduler.isPlaying()) this.playButton.start();
+    });
+    window.addEventListener('metronome:pause', () => {
+      if (this.scheduler.isPlaying()) this.playButton.stop();
+    });
+
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && this.scheduler.isPlaying()) {
         this.audio.resume();
