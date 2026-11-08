@@ -2,14 +2,17 @@ import { GAP_PATTERN_LIMITS } from '../config/constants.js';
 
 /**
  * GapPatternWheel
- * Manages vertical scroll wheels for Click/Gap bar selection
- * Implements scroll-snap behavior for smooth UX
+ * Vertical scroll wheel for the Phrase / Gap selectors.
+ *  - 'phrase': bars per phrase (1–16)
+ *  - 'gap':    silent bars at the end of the phrase (0 … phrase−1), so the
+ *              options shrink/grow when the phrase length changes.
+ * Implements scroll-snap behavior for smooth UX.
  */
 export class GapPatternWheel {
   constructor(stateManager, wheelElement, type) {
     this.state = stateManager;
     this.wheelElement = wheelElement;
-    this.type = type; // 'click' or 'gap'
+    this.type = type; // 'phrase' or 'gap'
     this.options = [];
     this.scrollTimeout = null;
 
@@ -20,63 +23,55 @@ export class GapPatternWheel {
     this.subscribeToState();
   }
 
+  range() {
+    if (this.type === 'phrase') {
+      return [GAP_PATTERN_LIMITS.PHRASE_MIN, GAP_PATTERN_LIMITS.PHRASE_MAX];
+    }
+    return [GAP_PATTERN_LIMITS.GAP_MIN, this.state.getPhraseBars() - 1];
+  }
+
   /**
-   * Render wheel options (1-8 for click, 0-8 for gap)
+   * Render wheel options for the current range
    */
   render() {
-    const min = this.type === 'click'
-      ? GAP_PATTERN_LIMITS.CLICK_MIN
-      : GAP_PATTERN_LIMITS.GAP_MIN;
-    const max = this.type === 'click'
-      ? GAP_PATTERN_LIMITS.CLICK_MAX
-      : GAP_PATTERN_LIMITS.GAP_MAX;
-
+    const [min, max] = this.range();
+    this.renderedRange = `${min}-${max}`;
     this.wheelElement.innerHTML = '';
 
-    // Add top spacer for scroll snap centering
-    const topSpacer = document.createElement('div');
-    topSpacer.className = 'wheel-spacer';
-    this.wheelElement.appendChild(topSpacer);
+    // Top/bottom spacers let the first/last option snap to the centre.
+    const spacer = () => {
+      const el = document.createElement('div');
+      el.className = 'wheel-spacer';
+      return el;
+    };
 
-    // Add value options
+    this.wheelElement.appendChild(spacer());
     for (let i = min; i <= max; i++) {
       const option = document.createElement('div');
       option.className = 'wheel-option';
       option.dataset.value = i;
       option.textContent = i;
-      option.setAttribute('aria-label', `${i} bars`);
+      option.setAttribute('aria-label', `${i} ${i === 1 ? 'bar' : 'bars'}`);
       this.wheelElement.appendChild(option);
     }
-
-    // Add bottom spacer for scroll snap centering
-    const bottomSpacer = document.createElement('div');
-    bottomSpacer.className = 'wheel-spacer';
-    this.wheelElement.appendChild(bottomSpacer);
+    this.wheelElement.appendChild(spacer());
 
     this.options = Array.from(this.wheelElement.querySelectorAll('.wheel-option'));
-
-    // Center on current value
-    this.centerOnValue(this.getCurrentValue());
+    this.updateSelection(this.getCurrentValue());
   }
 
   /**
-   * Bind events
+   * Bind events (once — delegated, so re-rendering doesn't duplicate them)
    */
   bindEvents() {
-    // Click to select
-    this.options.forEach(option => {
-      option.addEventListener('click', () => {
-        const value = parseInt(option.dataset.value);
-        this.setValue(value);
-      });
+    this.wheelElement.addEventListener('click', (e) => {
+      const option = e.target.closest('.wheel-option');
+      if (option) this.setValue(parseInt(option.dataset.value, 10));
     });
 
-    // Scroll snap behavior
     this.wheelElement.addEventListener('scroll', () => {
       clearTimeout(this.scrollTimeout);
-      this.scrollTimeout = setTimeout(() => {
-        this.handleScrollEnd();
-      }, 150);
+      this.scrollTimeout = setTimeout(() => this.handleScrollEnd(), 150);
     });
   }
 
@@ -94,7 +89,6 @@ export class GapPatternWheel {
       const optionRect = option.getBoundingClientRect();
       const optionCenter = optionRect.top + optionRect.height / 2;
       const distance = Math.abs(containerCenter - optionCenter);
-
       if (distance < minDistance) {
         minDistance = distance;
         closestOption = option;
@@ -102,8 +96,8 @@ export class GapPatternWheel {
     });
 
     if (closestOption) {
-      const value = parseInt(closestOption.dataset.value);
-      this.setValue(value);
+      const value = parseInt(closestOption.dataset.value, 10);
+      if (value !== this.getCurrentValue()) this.setValue(value);
     }
   }
 
@@ -111,25 +105,27 @@ export class GapPatternWheel {
    * Subscribe to state changes
    */
   subscribeToState() {
-    const event = this.type === 'click' ? 'clickBars' : 'gapBars';
-    this.state.subscribe(event, (value) => this.updateSelection(value));
+    if (this.type === 'phrase') {
+      this.state.subscribe('phraseBars', (value) => this.updateSelection(value));
+    } else {
+      this.state.subscribe('gapBars', (value) => this.updateSelection(value));
+      // The gap can be at most phrase−1: rebuild the options when that changes.
+      this.state.subscribe('phraseBars', () => {
+        const [min, max] = this.range();
+        if (this.renderedRange !== `${min}-${max}`) this.render();
+      });
+    }
   }
 
-  /**
-   * Get current value from state
-   */
   getCurrentValue() {
-    return this.type === 'click'
-      ? this.state.getClickBars()
+    return this.type === 'phrase'
+      ? this.state.getPhraseBars()
       : this.state.getGapBars();
   }
 
-  /**
-   * Set value in state
-   */
   setValue(value) {
-    if (this.type === 'click') {
-      this.state.setClickBars(value);
+    if (this.type === 'phrase') {
+      this.state.setPhraseBars(value);
     } else {
       this.state.setGapBars(value);
     }
@@ -140,11 +136,8 @@ export class GapPatternWheel {
    */
   updateSelection(value) {
     this.options.forEach(option => {
-      const optionValue = parseInt(option.dataset.value);
-      option.classList.toggle('selected', optionValue === value);
+      option.classList.toggle('selected', parseInt(option.dataset.value, 10) === value);
     });
-
-    // Scroll to center selected option
     this.centerOnValue(value);
   }
 

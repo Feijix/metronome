@@ -17,9 +17,9 @@ export class BeatsVisualizer {
     this.state.subscribe('playState', (isPlaying) => {
       if (!isPlaying) this.clearHighlights();
     });
-    // clickBars/gapBars only matter while stopped; during playback beatTick
+    // phraseBars/gapBars only matter while stopped; during playback beatTick
     // carries the correct snapshotted totals so we don't update live state here.
-    this.state.subscribe('clickBars', () => { if (!this.state.isPlaying()) this.updateModeDisplay(); });
+    this.state.subscribe('phraseBars', () => { if (!this.state.isPlaying()) this.updateModeDisplay(); });
     this.state.subscribe('gapBars',   () => { if (!this.state.isPlaying()) this.updateModeDisplay(); });
   }
 
@@ -101,14 +101,12 @@ export class BeatsVisualizer {
     const { runtime } = this.state.getState();
     this.modeDisplayElement.textContent = runtime.isGapMode ? 'GAP' : 'CLICK';
     this.modeDisplayElement.className = 'mode' + (runtime.isGapMode ? ' gap' : '');
-    this.barDisplayElement.textContent = runtime.barsInCurrentMode + 1;
+    this.barDisplayElement.textContent = runtime.barInPhrase + 1;
     this.updateBarTotal();
   }
 
   updateBarTotal() {
-    const { config, runtime } = this.state.getState();
-    const total = runtime.isGapMode ? config.gapBars : config.clickBars;
-    this.barTotalElement.textContent = total;
+    this.barTotalElement.textContent = this.state.getState().config.phraseBars;
   }
 
   init() {

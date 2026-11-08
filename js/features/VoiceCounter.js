@@ -1,6 +1,7 @@
 /**
- * VoiceCounter speaks the click-bar number ("one", "two", …) at the start of
- * each Click bar. The Web Speech API is unreliable inside the Android WebView,
+ * VoiceCounter speaks the bar's position in the phrase ("one", "two", …) at
+ * the start of each sounding bar; gap bars stay silent, so a 4-bar phrase with
+ * a 1-bar gap is counted "one, two, three, (rest)". The Web Speech API is unreliable inside the Android WebView,
  * so this plays pre-recorded number samples (assets/sounds/voice/N.wav) through
  * the metronome's AudioContext — which is already unlocked by the play gesture
  * and works offline. Leading silence is trimmed so the word lands on the beat.

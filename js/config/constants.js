@@ -92,14 +92,16 @@ export const SUBDIVISIONS = [
 
 export const SUBDIVISION_MAP = Object.fromEntries(SUBDIVISIONS.map(s => [s.id, s]));
 
-// Gap pattern limits
+// Phrase / gap limits. A phrase is PHRASE bars long; its last GAP bars are
+// silent (so PHRASE 4, GAP 1 = 3 click bars + 1 gap bar, counted 1-2-3-rest).
+// GAP is always < PHRASE so at least one bar clicks. PHRASE_MAX matches the
+// recorded voice numbers (1–16).
 export const GAP_PATTERN_LIMITS = {
-  CLICK_MIN: 1,
-  CLICK_MAX: 8,
-  CLICK_DEFAULT: 4,
+  PHRASE_MIN: 1,
+  PHRASE_MAX: 16,
+  PHRASE_DEFAULT: 4,
   GAP_MIN: 0,
-  GAP_MAX: 8,
-  GAP_DEFAULT: 2
+  GAP_DEFAULT: 1
 };
 
 // Click sounds (see assets/sounds/CREDITS.md). clave/cowbell are CC0/PD
@@ -171,10 +173,10 @@ export const TEMPO_MARKINGS = [
 export const DEFAULT_STATE = {
   bpm: BPM_CONSTANTS.DEFAULT,
   timeSignature: TIME_SIG.DEFAULT_NUM, // numerator: beats per bar
-  beatUnit: TIME_SIG.DEFAULT_DEN,      // denominator: beat note value (label only)
+  beatUnit: TIME_SIG.DEFAULT_DEN,      // denominator: beat note value
   subdivision: 'q',
-  clickBars: GAP_PATTERN_LIMITS.CLICK_DEFAULT,
-  gapBars: GAP_PATTERN_LIMITS.GAP_DEFAULT,
+  phraseBars: GAP_PATTERN_LIMITS.PHRASE_DEFAULT, // total bars per phrase
+  gapBars: GAP_PATTERN_LIMITS.GAP_DEFAULT,       // silent bars at the end of it
   accentOne: true,
   accentQuarters: true,
   soundType: DEFAULT_SOUND,

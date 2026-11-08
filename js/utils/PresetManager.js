@@ -26,7 +26,8 @@ export class PresetManager {
       this.state.setTimeSignature(cfg.timeSignature);
       if (cfg.beatUnit) this.state.setBeatUnit(cfg.beatUnit);
       this.state.setSubdivision(PresetManager.migrateSubdivision(cfg.subdivision));
-      this.state.setClickBars(cfg.clickBars);
+      // Old presets stored clickBars (+ gapBars); a phrase is click + gap.
+      this.state.setPhraseBars(cfg.phraseBars ?? ((cfg.clickBars | 0) + (cfg.gapBars | 0)));
       this.state.setGapBars(cfg.gapBars);
       this.state.setBeatMutes(cfg.beatMutes || []);
 

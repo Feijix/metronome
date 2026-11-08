@@ -65,7 +65,11 @@ class GapMetronomeApp {
   // Warm up the audio engine (create context + decode the current sample) on
   // the first user gesture so the very first click isn't clipped while loading.
   setupAudioWarmup() {
-    const warm = () => this.audio.init();
+    // Voice numbers are preloaded too, so bar 1 of the first phrase is spoken.
+    const warm = () => {
+      this.audio.init();
+      if (this.state.getVoiceCount()) this.voiceCounter._ensureLoaded();
+    };
     window.addEventListener('pointerdown', warm, { once: true });
     window.addEventListener('keydown', warm, { once: true });
   }
@@ -95,7 +99,7 @@ class GapMetronomeApp {
       elements.barTotal,
       elements.modeDisplay
     );
-    this.clickWheel = new GapPatternWheel(this.state, elements.clickWheel, 'click');
+    this.phraseWheel = new GapPatternWheel(this.state, elements.clickWheel, 'phrase');
     this.gapWheel = new GapPatternWheel(this.state, elements.gapWheel, 'gap');
     this.timeSignatureWheel = new TimeSignatureWheel(this.state, elements);
     this.subdivisionWheel = new SubdivisionControl(this.state, elements);

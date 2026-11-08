@@ -21,7 +21,7 @@ export class StateManager {
       currentSubBeat: 0,
       currentBar: 1,
       isGapMode: false,
-      barsInCurrentMode: 0,
+      barInPhrase: 0,      // 0-based bar position within the phrase
       isPlaying: false
     };
 
@@ -36,7 +36,15 @@ export class StateManager {
   loadFromStorage() {
     try {
       const raw = localStorage.getItem('gm-config');
-      if (raw) this.config = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+      if (raw) {
+        const saved = JSON.parse(raw);
+        // Migrate BEFORE merging defaults (DEFAULT_STATE has a phraseBars, which
+        // would otherwise hide that this save predates phrases).
+        if (saved.phraseBars == null && saved.clickBars != null) {
+          saved.phraseBars = (saved.clickBars | 0) + (saved.gapBars | 0);
+        }
+        this.config = { ...DEFAULT_STATE, ...saved };
+      }
     } catch(e) {}
     this.sanitizeConfig();
   }
@@ -55,6 +63,14 @@ export class StateManager {
     this.config.timeSignature = n || TIME_SIG.DEFAULT_NUM;
     if (typeof this.config.vibrate !== 'boolean') this.config.vibrate = true;
     if (typeof this.config.voiceCount !== 'boolean') this.config.voiceCount = false;
+    // Migration: the old model was "clickBars then gapBars"; a phrase is now
+    // the whole cycle, so phrase = click + gap (same rhythm as before).
+    if (this.config.phraseBars == null && this.config.clickBars != null) {
+      this.config.phraseBars = (this.config.clickBars | 0) + (this.config.gapBars | 0);
+    }
+    delete this.config.clickBars;
+    this.config.phraseBars = this.clampPhrase(this.config.phraseBars);
+    this.config.gapBars = this.clampGap(this.config.gapBars, this.config.phraseBars);
     this.ensureBeatMutesLength();
   }
 
@@ -182,27 +198,39 @@ export class StateManager {
     return SUBDIVISION_MAP[this.config.subdivision] || SUBDIVISIONS[0];
   }
 
-  // Gap pattern controls with validation
-  setClickBars(value) {
-    const validated = Math.max(
-      GAP_PATTERN_LIMITS.CLICK_MIN,
-      Math.min(GAP_PATTERN_LIMITS.CLICK_MAX, value)
-    );
-    this.config.clickBars = validated;
-    this.notify('clickBars', validated);
+  // ── Phrase / gap ─────────────────────────────────────────────────────────
+  // A phrase is `phraseBars` long; its last `gapBars` bars are silent.
+  clampPhrase(v) {
+    const n = Math.round(Number(v));
+    if (!Number.isFinite(n)) return GAP_PATTERN_LIMITS.PHRASE_DEFAULT;
+    return Math.max(GAP_PATTERN_LIMITS.PHRASE_MIN, Math.min(GAP_PATTERN_LIMITS.PHRASE_MAX, n));
+  }
+
+  clampGap(v, phrase = this.config.phraseBars) {
+    const n = Math.round(Number(v));
+    if (!Number.isFinite(n)) return Math.min(GAP_PATTERN_LIMITS.GAP_DEFAULT, phrase - 1);
+    return Math.max(GAP_PATTERN_LIMITS.GAP_MIN, Math.min(phrase - 1, n));
+  }
+
+  setPhraseBars(value) {
+    const validated = this.clampPhrase(value);
+    this.config.phraseBars = validated;
+    this.notify('phraseBars', validated);
+    // Keep at least one click bar: shrink the gap if it no longer fits.
+    if (this.config.gapBars > validated - 1) {
+      this.config.gapBars = validated - 1;
+      this.notify('gapBars', this.config.gapBars);
+    }
     this.saveToStorage();
     return validated;
   }
 
-  getClickBars() {
-    return this.config.clickBars;
+  getPhraseBars() {
+    return this.config.phraseBars;
   }
 
   setGapBars(value) {
-    const validated = Math.max(
-      GAP_PATTERN_LIMITS.GAP_MIN,
-      Math.min(GAP_PATTERN_LIMITS.GAP_MAX, value)
-    );
+    const validated = this.clampGap(value);
     this.config.gapBars = validated;
     this.notify('gapBars', validated);
     this.saveToStorage();
@@ -211,6 +239,16 @@ export class StateManager {
 
   getGapBars() {
     return this.config.gapBars;
+  }
+
+  /** Number of sounding bars per phrase. */
+  getClickBars() {
+    return this.config.phraseBars - this.config.gapBars;
+  }
+
+  /** Whether bar `index` (0-based within the phrase) is a gap bar. */
+  isGapBar(index) {
+    return index >= this.config.phraseBars - this.config.gapBars;
   }
 
   // Accent toggles
@@ -280,7 +318,7 @@ export class StateManager {
       currentSubBeat: 0,
       currentBar: 1,
       isGapMode: false,
-      barsInCurrentMode: 0,
+      barInPhrase: 0,      // 0-based bar position within the phrase
       isPlaying: false
     };
     this.notify('runtime', this.runtime);
@@ -303,21 +341,13 @@ export class StateManager {
   }
 
   advanceBar() {
-    this.runtime.barsInCurrentMode++;
-    const targetBars = this.runtime.isGapMode
-      ? this.config.gapBars
-      : this.config.clickBars;
-
-    if (this.runtime.barsInCurrentMode >= targetBars) {
-      this.runtime.barsInCurrentMode = 0;
-      this.runtime.isGapMode = !this.runtime.isGapMode;
-
-      // If switching to gap mode but gapBars is 0, immediately switch back to click mode
-      if (this.runtime.isGapMode && this.config.gapBars === 0) {
-        this.runtime.isGapMode = false;
-      }
-
-      this.notify('modeSwitch', this.runtime.isGapMode);
+    const phrase = this.config.phraseBars;
+    // Wrap at the phrase end (also if the phrase was shortened mid-play).
+    this.runtime.barInPhrase = (this.runtime.barInPhrase + 1) % phrase;
+    const isGap = this.isGapBar(this.runtime.barInPhrase);
+    if (isGap !== this.runtime.isGapMode) {
+      this.runtime.isGapMode = isGap;
+      this.notify('modeSwitch', isGap);
     }
   }
 

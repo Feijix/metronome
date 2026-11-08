@@ -77,7 +77,7 @@ export class MetronomeScheduler {
     // path, which jitters and lagged behind the beat).
     if (!late && !runtime.isGapMode && runtime.currentBeat === 0 && runtime.currentSubBeat === 0) {
       this.state.notify('barAudioStart', {
-        bar: runtime.barsInCurrentMode + 1,
+        bar: runtime.barInPhrase + 1,   // position in the phrase → spoken count
         time: this.nextNoteTime
       });
     }
@@ -110,8 +110,8 @@ export class MetronomeScheduler {
 
   scheduleVisualUpdate(runtime, config, clickType) {
     const delay = (this.nextNoteTime - this.audio.currentTime) * 1000;
-    const bar = runtime.barsInCurrentMode + 1;
-    const barTotal = runtime.isGapMode ? config.gapBars : config.clickBars;
+    const bar = runtime.barInPhrase + 1;
+    const barTotal = config.phraseBars;
     const isGap = runtime.isGapMode;
     setTimeout(() => {
       this.state.notify('beatTick', {

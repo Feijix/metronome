@@ -14,8 +14,9 @@ export function registerStateManagerTests(test) {
       Assert.equal(state.getBPM(), 120);
       Assert.equal(state.getTimeSignature(), 4);
       Assert.equal(state.getSubdivision(), 1);
-      Assert.equal(state.getClickBars(), 4);
-      Assert.equal(state.getGapBars(), 2);
+      Assert.equal(state.getPhraseBars(), 4);
+      Assert.equal(state.getGapBars(), 1);
+      Assert.equal(state.getClickBars(), 3);
       Assert.isTrue(state.getAccentOne());
       Assert.isTrue(state.getAccentQuarters());
     });
@@ -119,30 +120,31 @@ export function registerStateManagerTests(test) {
       }, 'Invalid subdivision');
     });
 
-    test.it('setClickBars clamps to valid range', () => {
+    test.it('setPhraseBars clamps to 1–16', () => {
       state = createState();
-
-      state.setClickBars(8);
-      Assert.equal(state.getClickBars(), 8);
-
-      // Below minimum
-      Assert.equal(state.setClickBars(0), 1);
-
-      // Above maximum
-      Assert.equal(state.setClickBars(20), 8);
+      Assert.equal(state.setPhraseBars(8), 8);
+      Assert.equal(state.setPhraseBars(0), 1);
+      Assert.equal(state.setPhraseBars(20), 16);
     });
 
-    test.it('setGapBars allows zero and clamps to maximum', () => {
+    test.it('setGapBars allows zero and stays below the phrase length', () => {
       state = createState();
-
-      // Zero is valid
+      state.setPhraseBars(4);
       Assert.equal(state.setGapBars(0), 0);
+      Assert.equal(state.setGapBars(3), 3);
+      Assert.equal(state.setGapBars(4), 3);   // at least one click bar
+      // Shortening the phrase shrinks a gap that no longer fits.
+      state.setPhraseBars(2);
+      Assert.equal(state.getGapBars(), 1);
+    });
 
-      // Normal value
-      Assert.equal(state.setGapBars(5), 5);
-
-      // Above maximum
-      Assert.equal(state.setGapBars(20), 8);
+    test.it('migrates old clickBars/gapBars config to a phrase', () => {
+      state = createState();
+      state.config = { ...state.config, clickBars: 3, gapBars: 2 };
+      delete state.config.phraseBars;
+      state.sanitizeConfig();
+      Assert.equal(state.getPhraseBars(), 5);
+      Assert.equal(state.getGapBars(), 2);
     });
 
     test.it('toggleAccentOne switches value', () => {
@@ -176,7 +178,7 @@ export function registerStateManagerTests(test) {
       state.runtime.currentBeat = 3;
       state.runtime.currentSubBeat = 2;
       state.runtime.isGapMode = true;
-      state.runtime.barsInCurrentMode = 5;
+      state.runtime.barInPhrase = 5;
 
       state.resetRuntime();
 
@@ -184,7 +186,7 @@ export function registerStateManagerTests(test) {
       Assert.equal(state.runtime.currentSubBeat, 0);
       Assert.equal(state.runtime.currentBar, 1);
       Assert.isFalse(state.runtime.isGapMode);
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
+      Assert.equal(state.runtime.barInPhrase, 0);
       Assert.isFalse(state.runtime.isPlaying);
     });
 
@@ -229,45 +231,32 @@ export function registerStateManagerTests(test) {
       state.advanceBeat();
 
       Assert.equal(state.runtime.currentBeat, 0);
-      Assert.equal(state.runtime.barsInCurrentMode, 1);
+      Assert.equal(state.runtime.barInPhrase, 1);
     });
 
-    test.it('advanceBar switches mode after click bars', () => {
+    test.it('advanceBar: last gapBars bars of the phrase are gaps', () => {
       state = createState();
-      state.setClickBars(2);
-      state.runtime.barsInCurrentMode = 1;
-      state.runtime.isGapMode = false;
-
-      state.advanceBar();
-
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
-      Assert.isTrue(state.runtime.isGapMode);
+      state.setPhraseBars(4);
+      state.setGapBars(1);
+      state.resetRuntime();
+      const seen = [];
+      for (let k = 0; k < 8; k++) {
+        seen.push(`${state.runtime.barInPhrase + 1}${state.runtime.isGapMode ? 'G' : 'C'}`);
+        state.advanceBar();
+      }
+      Assert.equal(seen.join(' '), '1C 2C 3C 4G 1C 2C 3C 4G');
     });
 
-    test.it('advanceBar switches mode after gap bars', () => {
+    test.it('advanceBar never enters gap mode when gapBars is 0', () => {
       state = createState();
-      state.setGapBars(3);
-      state.runtime.barsInCurrentMode = 2;
-      state.runtime.isGapMode = true;
-
-      state.advanceBar();
-
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
-      Assert.isFalse(state.runtime.isGapMode);
-    });
-
-    test.it('advanceBar skips gap mode when gapBars is 0', () => {
-      state = createState();
+      state.setPhraseBars(2);
       state.setGapBars(0);
-      state.setClickBars(2);
-      state.runtime.barsInCurrentMode = 1;
-      state.runtime.isGapMode = false;
-
-      // Complete click bars, should skip gap mode entirely
-      state.advanceBar();
-
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
-      Assert.isFalse(state.runtime.isGapMode); // Should NOT enter gap mode
+      state.resetRuntime();
+      for (let k = 0; k < 4; k++) {
+        state.advanceBar();
+        Assert.isFalse(state.runtime.isGapMode);
+      }
+      Assert.equal(state.runtime.barInPhrase, 0);
     });
 
     test.it('observer pattern works correctly', () => {

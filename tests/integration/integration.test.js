@@ -118,7 +118,7 @@ export function registerIntegrationTests(test) {
 
       state.setTimeSignature(4);
       state.setSubdivision(2);
-      state.setClickBars(2);
+      state.setPhraseBars(3);   // 2 click bars + 1 gap bar
       state.setGapBars(1);
 
       // Advance through subdivisions -> beats -> bars -> mode switch
@@ -142,7 +142,7 @@ export function registerIntegrationTests(test) {
       }
 
       Assert.equal(state.runtime.currentBeat, 0);
-      Assert.equal(state.runtime.barsInCurrentMode, 1);
+      Assert.equal(state.runtime.barInPhrase, 1);
 
       // Complete second bar (should switch to gap mode)
       for (let i = 0; i < 8; i++) { // 4 beats * 2 subs = 8
@@ -150,7 +150,7 @@ export function registerIntegrationTests(test) {
       }
 
       Assert.isTrue(state.runtime.isGapMode);
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
+      Assert.equal(state.runtime.barInPhrase, 0);
 
       cleanup();
     });
@@ -185,8 +185,9 @@ export function registerIntegrationTests(test) {
         lastMode = isGapMode;
       });
 
-      state.setClickBars(1);
-      state.runtime.barsInCurrentMode = 0;
+      state.setPhraseBars(2);   // 1 click bar + 1 gap bar
+      state.setGapBars(1);
+      state.runtime.barInPhrase = 0;
 
       // Complete first bar
       state.advanceBar();
@@ -237,8 +238,8 @@ export function registerIntegrationTests(test) {
     test.it('Zero gap bars skips gap mode completely', () => {
       const { state } = setupIntegration();
 
+      state.setPhraseBars(2);
       state.setGapBars(0);
-      state.setClickBars(2);
       state.setTimeSignature(4);
       state.resetRuntime();
 
@@ -251,7 +252,7 @@ export function registerIntegrationTests(test) {
 
       // Should still be in click mode, never entered gap mode
       Assert.isFalse(state.runtime.isGapMode);
-      Assert.equal(state.runtime.barsInCurrentMode, 0);
+      Assert.equal(state.runtime.barInPhrase, 0);
 
       cleanup();
     });
