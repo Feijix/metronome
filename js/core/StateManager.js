@@ -59,8 +59,18 @@ export class StateManager {
     if (!TIME_SIG.DENOMINATORS.includes(this.config.beatUnit)) {
       this.config.beatUnit = TIME_SIG.DEFAULT_DEN;
     }
-    const n = Math.max(TIME_SIG.NUM_MIN, Math.min(TIME_SIG.NUM_MAX, this.config.timeSignature | 0));
-    this.config.timeSignature = n || TIME_SIG.DEFAULT_NUM;
+    const num = Math.round(Number(this.config.timeSignature));
+    this.config.timeSignature = Number.isFinite(num) && num > 0
+      ? Math.min(TIME_SIG.NUM_MAX, num)
+      : TIME_SIG.DEFAULT_NUM;
+    const bpm = Math.round(Number(this.config.bpm));
+    this.config.bpm = Number.isFinite(bpm)
+      ? Math.max(BPM_CONSTANTS.MIN, Math.min(BPM_CONSTANTS.MAX, bpm))
+      : BPM_CONSTANTS.DEFAULT;
+    if (!SUBDIVISION_MAP[this.config.subdivision]) this.config.subdivision = DEFAULT_STATE.subdivision;
+    for (const k of ['accentOne', 'accentQuarters']) {
+      if (typeof this.config[k] !== 'boolean') this.config[k] = DEFAULT_STATE[k];
+    }
     if (typeof this.config.vibrate !== 'boolean') this.config.vibrate = true;
     if (typeof this.config.voiceCount !== 'boolean') this.config.voiceCount = false;
     // Migration: the old model was "clickBars then gapBars"; a phrase is now
@@ -76,6 +86,9 @@ export class StateManager {
 
   // BPM Management with validation
   setBPM(value) {
+    // Ignore non-numbers (a missing preset field, NaN): NaN would survive the
+    // clamp below and silence the scheduler.
+    if (!Number.isFinite(Number(value))) return this.config.bpm;
     const validated = Math.max(
       BPM_CONSTANTS.MIN,
       Math.min(BPM_CONSTANTS.MAX, Math.round(value))
@@ -94,6 +107,8 @@ export class StateManager {
 
   // Time signature numerator (beats per bar). Clamped to [NUM_MIN, NUM_MAX].
   setTimeSignature(value) {
+    // NaN would mean the bar never ends (currentBeat >= NaN is always false).
+    if (!Number.isFinite(Number(value))) return this.config.timeSignature;
     const v = Math.max(TIME_SIG.NUM_MIN, Math.min(TIME_SIG.NUM_MAX, Math.round(value)));
     if (this.config.timeSignature !== v) {
       this.config.timeSignature = v;

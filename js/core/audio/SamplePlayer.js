@@ -102,7 +102,7 @@ export class SamplePlayer {
       src.connect(g).connect(ctx.destination);
       src.start(startAt, bufOff);
       src.stop(startAt + bufDur + 0.02);
-      return;
+      return src;
     }
 
     // Recording: play a short windowed slice from the detected onset, with a
@@ -115,5 +115,6 @@ export class SamplePlayer {
     src.connect(g).connect(ctx.destination);
     src.start(t0, this.offset);
     src.stop(t0 + dur + 0.03);
+    return src;
   }
 }

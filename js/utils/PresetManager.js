@@ -18,35 +18,44 @@ export class PresetManager {
 
   loadPreset(name) {
     const presetData = localStorage.getItem(`preset:${name}`);
-    if (presetData) {
-      const stateData = JSON.parse(presetData);
+    if (!presetData) return false;
+    let cfg;
+    try {
+      cfg = JSON.parse(presetData).config;
+    } catch (e) {
+      console.warn(`Preset "${name}" is unreadable`, e);
+      return false;
+    }
+    if (!cfg || typeof cfg !== 'object') return false;
 
-      const cfg = stateData.config;
-      this.state.setBPM(cfg.bpm);
-      this.state.setTimeSignature(cfg.timeSignature);
-      if (cfg.beatUnit) this.state.setBeatUnit(cfg.beatUnit);
-      this.state.setSubdivision(PresetManager.migrateSubdivision(cfg.subdivision));
-      // Old presets stored clickBars (+ gapBars); a phrase is click + gap.
-      this.state.setPhraseBars(cfg.phraseBars ?? ((cfg.clickBars | 0) + (cfg.gapBars | 0)));
-      this.state.setGapBars(cfg.gapBars);
-      this.state.setBeatMutes(cfg.beatMutes || []);
-
-      if (this.state.getAccentOne() !== cfg.accentOne) {
+    // Apply each field independently: one bad or missing value (e.g. from an
+    // old version) must not abort the load halfway and leave settings mixed.
+    const apply = (label, fn) => {
+      try { fn(); } catch (e) { console.warn(`Preset "${name}": skipped ${label}`, e); }
+    };
+    apply('bpm', () => this.state.setBPM(cfg.bpm));
+    apply('timeSignature', () => this.state.setTimeSignature(cfg.timeSignature));
+    apply('beatUnit', () => { if (cfg.beatUnit) this.state.setBeatUnit(cfg.beatUnit); });
+    apply('subdivision', () => this.state.setSubdivision(PresetManager.migrateSubdivision(cfg.subdivision)));
+    // Old presets stored clickBars (+ gapBars); a phrase is click + gap.
+    apply('phraseBars', () => this.state.setPhraseBars(cfg.phraseBars ?? ((cfg.clickBars | 0) + (cfg.gapBars | 0))));
+    apply('gapBars', () => this.state.setGapBars(cfg.gapBars));
+    apply('beatMutes', () => this.state.setBeatMutes(cfg.beatMutes || []));
+    apply('accents', () => {
+      if (typeof cfg.accentOne === 'boolean' && this.state.getAccentOne() !== cfg.accentOne) {
         this.state.toggleAccentOne();
       }
-      if (this.state.getAccentQuarters() !== cfg.accentQuarters) {
+      if (typeof cfg.accentQuarters === 'boolean' && this.state.getAccentQuarters() !== cfg.accentQuarters) {
         this.state.toggleAccentQuarters();
       }
-
-      if (SOUND_TYPES.includes(cfg.soundType)) {
-        this.state.setSoundType(cfg.soundType);
-      } else {
-        this.state.setSoundType(DEFAULT_SOUND);
-      }
-      this.state.setVibrate(cfg.vibrate ?? true);
-      this.state.setFlashOnChange(cfg.flashOnChange || false);
-      this.state.setKeepAwake(cfg.keepAwake || false);
-    }
+    });
+    apply('soundType', () => this.state.setSoundType(
+      SOUND_TYPES.includes(cfg.soundType) ? cfg.soundType : DEFAULT_SOUND));
+    apply('vibrate', () => this.state.setVibrate(cfg.vibrate ?? true));
+    apply('voiceCount', () => { if (typeof cfg.voiceCount === 'boolean') this.state.setVoiceCount(cfg.voiceCount); });
+    apply('flashOnChange', () => this.state.setFlashOnChange(cfg.flashOnChange || false));
+    apply('keepAwake', () => this.state.setKeepAwake(cfg.keepAwake || false));
+    return true;
   }
 
   deletePreset(name) {

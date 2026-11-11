@@ -100,14 +100,14 @@ export function registerIntegrationTests(test) {
       // Set custom configuration
       state.setBPM(100);
       state.setTimeSignature(3);
-      state.setSubdivision(2);
+      state.setSubdivision('8');
 
       scheduler.start();
 
       const stateData = state.getState();
       Assert.equal(stateData.config.bpm, 100);
       Assert.equal(stateData.config.timeSignature, 3);
-      Assert.equal(stateData.config.subdivision, 2);
+      Assert.equal(stateData.config.subdivision, '8');
 
       scheduler.stop();
       cleanup();
@@ -117,7 +117,7 @@ export function registerIntegrationTests(test) {
       const { state } = setupIntegration();
 
       state.setTimeSignature(4);
-      state.setSubdivision(2);
+      state.setSubdivision('8');
       state.setPhraseBars(3);   // 2 click bars + 1 gap bar
       state.setGapBars(1);
 
@@ -149,8 +149,9 @@ export function registerIntegrationTests(test) {
         state.advanceSubBeat();
       }
 
+      // Bar 3 of the 3-bar phrase is the gap bar.
       Assert.isTrue(state.runtime.isGapMode);
-      Assert.equal(state.runtime.barInPhrase, 0);
+      Assert.equal(state.runtime.barInPhrase, 2);
 
       cleanup();
     });

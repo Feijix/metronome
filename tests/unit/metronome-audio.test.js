@@ -1,6 +1,6 @@
 import { TestFramework, Assert } from '../lib/test-framework.js';
 import { MetronomeAudio } from '../../js/core/MetronomeAudio.js';
-import { AUDIO_CONSTANTS } from '../../js/config/constants.js';
+import { AUDIO_CONSTANTS, DEFAULT_SOUND } from '../../js/config/constants.js';
 
 export function registerMetronomeAudioTests(test) {
   test.describe('MetronomeAudio', () => {
@@ -29,39 +29,32 @@ export function registerMetronomeAudioTests(test) {
       Assert.equal(audio.audioContext, firstContext);
     });
 
-    test.it('setSoundType updates sound type', () => {
+    test.it('setSoundType updates sound type and ignores unknown ones', () => {
       audio = new MetronomeAudio();
-
       audio.setSoundType('digital');
       Assert.equal(audio.soundType, 'digital');
-
-      audio.setSoundType('rimshot');
-      Assert.equal(audio.soundType, 'rimshot');
+      audio.setSoundType('rimshot'); // removed synth: ignored
+      Assert.equal(audio.soundType, 'digital');
     });
 
-    test.it('setSoundType updates synthesizer after init', () => {
+    test.it('setSoundType creates a sample player after init', () => {
       audio = new MetronomeAudio();
       audio.init();
-
-      audio.setSoundType('kick');
-
-      Assert.isNotNull(audio.currentSynthesizer);
-      Assert.equal(audio.soundType, 'kick');
+      audio.setSoundType('cowbell');
+      Assert.equal(audio.soundType, 'cowbell');
+      Assert.isTrue(audio.players.has('cowbell'));
     });
 
-    test.it('default sound type is clave', () => {
+    test.it('default sound type is the configured default', () => {
       audio = new MetronomeAudio();
-      Assert.equal(audio.soundType, 'clave');
+      Assert.equal(audio.soundType, DEFAULT_SOUND);
     });
 
-    test.it('synthesizer is created on init', () => {
+    test.it('playClick is a silent no-op until the sample is decoded', () => {
       audio = new MetronomeAudio();
       audio.init();
-
-      Assert.isNotNull(audio.currentSynthesizer);
-      Assert.isDefined(audio.currentSynthesizer.playAccent);
-      Assert.isDefined(audio.currentSynthesizer.playQuarter);
-      Assert.isDefined(audio.currentSynthesizer.playSubdivision);
+      Assert.isTrue(audio.players.has(audio.soundType));
+      Assert.equal(audio.playClick('downbeat', audio.currentTime + 0.1), undefined);
     });
 
     test.it('currentTime returns 0 when not initialized', () => {

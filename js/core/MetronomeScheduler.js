@@ -6,6 +6,11 @@ export class MetronomeScheduler {
     this.audio = audioEngine;
     this.schedulerInterval = null;
     this.nextNoteTime = 0;
+    // Clicks and beat-highlight timers already queued ahead of time. Up to
+    // HIDDEN_SCHEDULE_AHEAD_TIME (1.5 s) of them exist while the screen is off,
+    // so stop() must cancel them or they'd keep sounding after a pause.
+    this.pendingSources = [];
+    this.pendingTimers = new Set();
 
     // Going to the background (screen off): immediately top the queue up to
     // the larger hidden lookahead before the browser starts throttling timers.
@@ -17,6 +22,7 @@ export class MetronomeScheduler {
   }
 
   start() {
+    if (this.isPlaying()) return; // a second start would leak another interval
     this.audio.init();
     this.state.resetRuntime();
 
@@ -34,7 +40,21 @@ export class MetronomeScheduler {
       clearInterval(this.schedulerInterval);
       this.schedulerInterval = null;
     }
+    this.cancelPending();
     this.state.setPlaying(false);
+  }
+
+  /** Cancel clicks and visual updates that were scheduled but haven't happened. */
+  cancelPending() {
+    const now = this.audio.currentTime;
+    for (const { src, time } of this.pendingSources) {
+      if (time > now) {
+        try { src.stop(); } catch (e) { /* already stopped */ }
+      }
+    }
+    this.pendingSources = [];
+    this.pendingTimers.forEach(id => clearTimeout(id));
+    this.pendingTimers.clear();
   }
 
   scheduler() {
@@ -69,7 +89,8 @@ export class MetronomeScheduler {
         && subDef.pattern[runtime.currentSubBeat]
         && !this.state.isBeatMuted(runtime.currentBeat)) {
       clickType = this.determineClickType(config, runtime);
-      this.audio.playClick(clickType, this.nextNoteTime);
+      const src = this.audio.playClick(clickType, this.nextNoteTime);
+      if (src) this.trackSource(src, this.nextNoteTime);
     }
 
     // Announce the start of a Click bar at its exact audio time so the spoken
@@ -90,6 +111,13 @@ export class MetronomeScheduler {
 
     // Advance position in state
     this.state.advanceSubBeat();
+  }
+
+  trackSource(src, time) {
+    const now = this.audio.currentTime;
+    // Drop entries that have already played so the list stays short.
+    this.pendingSources = this.pendingSources.filter(p => p.time > now);
+    this.pendingSources.push({ src, time });
   }
 
   determineClickType(config, runtime) {
@@ -113,7 +141,8 @@ export class MetronomeScheduler {
     const bar = runtime.barInPhrase + 1;
     const barTotal = config.phraseBars;
     const isGap = runtime.isGapMode;
-    setTimeout(() => {
+    const id = setTimeout(() => {
+      this.pendingTimers.delete(id);
       this.state.notify('beatTick', {
         beat: runtime.currentBeat,
         isGap,
@@ -125,6 +154,7 @@ export class MetronomeScheduler {
         else if (clickType === 'quarter') navigator.vibrate(12);
       }
     }, delay);
+    this.pendingTimers.add(id);
   }
 
   isPlaying() {

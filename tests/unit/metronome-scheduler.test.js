@@ -130,10 +130,49 @@ export function registerMetronomeSchedulerTests(test) {
       Assert.isTrue(Math.abs((scheduler.nextNoteTime - t0) - 60 / 90 / 2) < 1e-9);
     });
 
+    test.it('stop() cancels clicks already queued ahead of time', () => {
+      state = new StateManager();
+      // Fake engine: playClick returns a source we can watch for stop().
+      const sources = [];
+      const fakeAudio = {
+        t: 0,
+        get currentTime() { return this.t; },
+        init() {},
+        playClick(type, time) {
+          const src = { time, stopped: false, stop() { this.stopped = true; } };
+          sources.push(src);
+          return src;
+        }
+      };
+      const s = new MetronomeScheduler(state, fakeAudio);
+      state.setBPM(120);
+      state.setSubdivision('q');
+      s.start();
+      // Queue 1.5 s ahead, as happens while the screen is off.
+      while (s.nextNoteTime < 1.5) s.scheduleNote();
+      fakeAudio.t = 0.6; // clicks at <= 0.6 s have played; later ones are queued
+      s.stop();
+      const future = sources.filter(x => x.time > 0.6);
+      const past = sources.filter(x => x.time <= 0.6);
+      Assert.greaterThan(future.length, 0);
+      Assert.isTrue(future.every(x => x.stopped));
+      Assert.isTrue(past.every(x => !x.stopped));
+      Assert.equal(s.pendingTimers.size, 0);
+    });
+
+    test.it('start() twice does not create a second scheduler timer', () => {
+      scheduler = createScheduler();
+      scheduler.start();
+      const first = scheduler.schedulerInterval;
+      scheduler.start();
+      Assert.equal(scheduler.schedulerInterval, first);
+      scheduler.stop();
+    });
+
     test.it('scheduleNote advances state', () => {
       scheduler = createScheduler();
       audio.init();
-      state.setSubdivision(4);
+      state.setSubdivision('16');
 
       const initialSubBeat = state.runtime.currentSubBeat;
       scheduler.nextNoteTime = audio.currentTime + 0.1;

@@ -53,6 +53,7 @@ export class MetronomeAudio {
    * Play a click. Silently no-ops if the sample isn't decoded yet.
    * @param {string} type - 'downbeat' | 'quarter' | 'subdivision' | 'normal'
    * @param {number} time - Web Audio time to play the sound
+   * @returns {AudioBufferSourceNode|undefined} the scheduled source (so it can be cancelled)
    */
   playClick(type = 'normal', time = 0) {
     const player = this.players.get(this.soundType);
@@ -65,7 +66,7 @@ export class MetronomeAudio {
                 : type === 'subdivision' ? lv.sub
                 : lv.quarter; // 'quarter' and 'normal'
     // `tune` shifts every sound to the Clave's note (see SAMPLE_CONFIG).
-    player.play(now, level.gain, level.rate * (cfg.tune ?? 1));
+    return player.play(now, level.gain, level.rate * (cfg.tune ?? 1));
   }
 
   get currentTime() {

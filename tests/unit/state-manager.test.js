@@ -1,6 +1,6 @@
 import { TestFramework, Assert } from '../lib/test-framework.js';
 import { StateManager } from '../../js/core/StateManager.js';
-import { BPM_CONSTANTS, TIME_SIGNATURES, SUBDIVISIONS, SOUND_TYPES } from '../../js/config/constants.js';
+import { BPM_CONSTANTS, TIME_SIG, SUBDIVISIONS, SOUND_TYPES } from '../../js/config/constants.js';
 
 export function registerStateManagerTests(test) {
   test.describe('StateManager', () => {
@@ -13,7 +13,7 @@ export function registerStateManagerTests(test) {
       state = createState();
       Assert.equal(state.getBPM(), 120);
       Assert.equal(state.getTimeSignature(), 4);
-      Assert.equal(state.getSubdivision(), 1);
+      Assert.equal(state.getSubdivision(), 'q');
       Assert.equal(state.getPhraseBars(), 4);
       Assert.equal(state.getGapBars(), 1);
       Assert.equal(state.getClickBars(), 3);
@@ -80,32 +80,43 @@ export function registerStateManagerTests(test) {
       Assert.equal(state.getTimeSignature(), 7);
     });
 
-    test.it('setTimeSignature throws on invalid signature', () => {
+    test.it('setTimeSignature clamps to range and ignores non-numbers', () => {
       state = createState();
+      Assert.equal(state.setTimeSignature(0), TIME_SIG.NUM_MIN);
+      Assert.equal(state.setTimeSignature(99), TIME_SIG.NUM_MAX);
+      state.setTimeSignature(7);
+      Assert.equal(state.setTimeSignature(NaN), 7);
+      Assert.equal(state.setTimeSignature(undefined), 7);
+      Assert.equal(state.getTimeSignature(), 7);
+    });
 
-      Assert.throws(() => {
-        state.setTimeSignature(6);
-      }, 'Invalid time signature');
+    test.it('setBPM ignores non-numbers instead of storing NaN', () => {
+      state = createState();
+      state.setBPM(90);
+      Assert.equal(state.setBPM(undefined), 90);
+      Assert.equal(state.setBPM(NaN), 90);
+      Assert.equal(state.setBPM('abc'), 90);
+      Assert.equal(state.getBPM(), 90);
+    });
 
-      Assert.throws(() => {
-        state.setTimeSignature(2);
-      }, 'Invalid time signature');
+    test.it('sanitizeConfig repairs a corrupted saved config', () => {
+      state = createState();
+      state.config = { ...state.config, bpm: 'oops', subdivision: 'bogus', accentOne: 'yes', timeSignature: null };
+      state.sanitizeConfig();
+      Assert.equal(state.getBPM(), BPM_CONSTANTS.DEFAULT);
+      Assert.equal(state.getSubdivision(), 'q');
+      Assert.isTrue(state.getAccentOne());
+      Assert.equal(state.getTimeSignature(), TIME_SIG.DEFAULT_NUM);
     });
 
     test.it('setSubdivision validates against allowed subdivisions', () => {
       state = createState();
 
-      state.setSubdivision(2);
-      Assert.equal(state.getSubdivision(), 2);
-
-      state.setSubdivision(3);
-      Assert.equal(state.getSubdivision(), 3);
-
-      state.setSubdivision(4);
-      Assert.equal(state.getSubdivision(), 4);
-
-      state.setSubdivision(12);
-      Assert.equal(state.getSubdivision(), 12);
+      SUBDIVISIONS.forEach(s => {
+        state.setSubdivision(s.id);
+        Assert.equal(state.getSubdivision(), s.id);
+      });
+      Assert.throws(() => state.setSubdivision(2), 'Invalid subdivision');
     });
 
     test.it('setSubdivision throws on invalid subdivision', () => {
@@ -192,7 +203,7 @@ export function registerStateManagerTests(test) {
 
     test.it('advanceSubBeat advances correctly', () => {
       state = createState();
-      state.setSubdivision(4);
+      state.setSubdivision('16');
 
       Assert.equal(state.runtime.currentSubBeat, 0);
 
@@ -205,7 +216,7 @@ export function registerStateManagerTests(test) {
 
     test.it('advanceSubBeat wraps and advances beat', () => {
       state = createState();
-      state.setSubdivision(2);
+      state.setSubdivision('8');
       state.runtime.currentSubBeat = 1;
 
       state.advanceSubBeat();
@@ -324,8 +335,8 @@ export function registerStateManagerTests(test) {
       state.setSoundType('digital');
       Assert.equal(state.getSoundType(), 'digital');
 
-      state.setSoundType('rimshot');
-      Assert.equal(state.getSoundType(), 'rimshot');
+      state.setSoundType('cowbell');
+      Assert.equal(state.getSoundType(), 'cowbell');
 
       state.setSoundType('clave');
       Assert.equal(state.getSoundType(), 'clave');
@@ -353,9 +364,9 @@ export function registerStateManagerTests(test) {
         notifiedValue = value;
       });
 
-      state.setSoundType('hihat');
+      state.setSoundType('shaker');
       Assert.isTrue(notified);
-      Assert.equal(notifiedValue, 'hihat');
+      Assert.equal(notifiedValue, 'shaker');
     });
 
     test.it('setFlashOnChange sets flash toggle', () => {

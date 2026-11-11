@@ -2,7 +2,7 @@ import { TestFramework, Assert } from '../lib/test-framework.js';
 import { TapTempo } from '../../js/features/TapTempo.js';
 import { StateManager } from '../../js/core/StateManager.js';
 import { MetronomeAudio } from '../../js/core/MetronomeAudio.js';
-import { TAP_TEMPO_CONSTANTS } from '../../js/config/constants.js';
+import { TAP_TEMPO_CONSTANTS, BPM_CONSTANTS } from '../../js/config/constants.js';
 
 export function registerTapTempoTests(test) {
   test.describe('TapTempo', () => {
@@ -86,7 +86,7 @@ export function registerTapTempoTests(test) {
       tapTempo.tapTimes = [1000, 1100, 1200];
       tapTempo.calculateAndUpdateBPM();
 
-      Assert.equal(state.getBPM(), 300); // MAX BPM
+      Assert.equal(state.getBPM(), BPM_CONSTANTS.MAX);
     });
 
     test.it('resetIfStale clears old taps', () => {

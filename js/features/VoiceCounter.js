@@ -21,7 +21,14 @@ export class VoiceCounter {
     this.state.subscribe('barAudioStart', data => this._onBar(data));
     // Preload as soon as it's relevant (context exists after the play gesture).
     this.state.subscribe('voiceCount', on => { if (on) this._ensureLoaded(); });
-    this.state.subscribe('playState', playing => { if (playing && this.state.getVoiceCount()) this._ensureLoaded(); });
+    this.state.subscribe('playState', playing => {
+      if (playing && this.state.getVoiceCount()) this._ensureLoaded();
+      // Stopping cancels a number that was already queued for the next bar.
+      if (!playing && this.current) {
+        try { this.current.stop(); } catch (e) {}
+        this.current = null;
+      }
+    });
   }
 
   _ctx() { return this.audio ? this.audio.audioContext : null; }
