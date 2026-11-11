@@ -8,3 +8,6 @@ www/
 # Android Studio per-machine device selection
 android/.idea/deploymentTargetSelector.xml
 android/.idea/deviceManager.xml
+
+# Built APKs for sharing
+dist/
