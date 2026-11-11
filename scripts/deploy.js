@@ -1,5 +1,7 @@
 // Full deploy to connected Android device.
-// Run: npm run deploy
+// Run: npm run deploy              (keeps the app's saved settings and presets)
+//      npm run deploy -- --clean   (also wipes all app data first)
+// With several devices connected, pick one: set ANDROID_SERIAL=<serial>.
 const { execSync } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -36,6 +38,7 @@ function findAdb() {
 }
 
 const adb = findAdb();
+const CLEAN = process.argv.includes('--clean');
 
 // 1. Build web assets and sync into Android project
 run('npm run sync');
@@ -43,8 +46,13 @@ run('npm run sync');
 // 2. Build APK (clean to ensure assets are always repackaged)
 run(`${GRADLEW} clean assembleDebug`, ANDROID_DIR);
 
-// 3. Clear stale WebView cache (service worker etc.) from any previous install
-run(`"${adb}" shell pm clear ${APP_ID}`);
+// 3. Optional: wipe all app data (settings, presets, WebView caches). Not needed
+//    for updates: the service worker loads bundled files first and every
+//    release bumps its cache name. Only for a truly fresh start.
+if (CLEAN) {
+  console.log('\n--clean: wiping app data (settings and presets will be lost)');
+  run(`"${adb}" shell pm clear ${APP_ID}`);
+}
 
 // 4. Install
 run(`"${adb}" install -r "${APK}"`);
