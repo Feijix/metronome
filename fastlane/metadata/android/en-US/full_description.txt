@@ -9,7 +9,7 @@ Pick a phrase length and a gap: the metronome clicks for the first bars of the p
 
 <b>Metronome</b>
 • 20–400 BPM with a rotary dial, +/− buttons and tap tempo
-• Time signatures from 1 to 16 beats over a half, quarter, eighth or whole note (e.g. 7/8, 5/4, 12/8)
+• Time signatures from 1 to 16 beats over a half, quarter, eighth or whole note (e.g. 7/8, 5/4; 6/8 and 12/8 accented in groups of three)
 • 17 subdivisions: eighths, triplets, sixteenths, sextuplets, 32nds, dotted eighths, offbeats and gapped sixteenth/triplet patterns
 • Tap any beat to mute it; accent beat 1 and the main beats
 • Six click sounds: Digital, Mechanical, Clave, Cowbell, Block and Shaker
