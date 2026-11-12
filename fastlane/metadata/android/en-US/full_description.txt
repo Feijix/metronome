@@ -1,0 +1,24 @@
+Gap Metronome is a practice metronome built around gap training, a well-known exercise for developing your internal sense of time.
+
+Pick a phrase length and a gap: the metronome clicks for the first bars of the phrase and goes silent for the rest. You keep playing through the silence, and when the click comes back you hear straight away whether you rushed or dragged.
+
+<b>Gap training</b>
+• Phrase of 1–16 bars, with any number of silent bars at the end
+• Optional voice count speaks the bar number, so you always know where you are
+• Optional screen flash when the phrase switches between click and silence
+
+<b>Metronome</b>
+• 20–400 BPM with a rotary dial, +/− buttons and tap tempo
+• Time signatures from 1 to 16 beats over a half, quarter, eighth or whole note (e.g. 7/8, 5/4, 12/8)
+• 17 subdivisions: eighths, triplets, sixteenths, sextuplets, 32nds, dotted eighths, offbeats and gapped sixteenth/triplet patterns
+• Tap any beat to mute it; accent beat 1 and the main beats
+• Six click sounds: Digital, Mechanical, Clave, Cowbell, Block and Shaker
+• Clicks are scheduled ahead on the audio clock for steady timing
+
+<b>Everyday use</b>
+• Keeps playing with the screen off, with play/pause in the notification
+• Vibrate on beats, keep-screen-awake option
+• Save and load presets
+• Light and dark themes
+
+No ads, no accounts, no analytics. Open source under the MIT license.
